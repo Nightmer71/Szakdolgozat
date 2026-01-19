@@ -1,0 +1,73 @@
+version: "3.8"
+
+services:
+        db:
+                image: postgres:16-alpine
+                container_name: fantasy_basketball_db
+                environment:
+                        POSTGRES_DB: myprojectdb
+                        POSTGRES_USER: myuser
+                        POSTGRES_PASSWORD: mypassword
+                ports:
+                        - "5432:5432"
+                volumes:
+                        - postgres_data:/var/lib/postgresql/data
+                networks:
+                        - basketball_network
+                healthcheck:
+                        test:
+                                [
+                                        "CMD-SHELL",
+                                        "pg_isready -U myuser -d myprojectdb",
+                                ]
+                        interval: 10s
+                        timeout: 5s
+                        retries: 5
+
+        backend:
+                build:
+                        context: ./backend
+                        dockerfile: Dockerfile
+                container_name: fantasy_basketball_backend
+                environment:
+                        DEBUG: "True"
+                        DATABASE_URL: postgresql://myuser:mypassword@db:5432/myprojectdb
+                        DJANGO_SETTINGS_MODULE: backend.settings
+                        ALLOWED_HOSTS: localhost,127.0.0.1,backend
+                ports:
+                        - "8000:8000"
+                volumes:
+                        - ./backend:/app
+                depends_on:
+                        db:
+                                condition: service_healthy
+                networks:
+                        - basketball_network
+                command: >
+                        sh -c "python manage.py migrate &&
+                               python manage.py runserver 0.0.0.0:8000"
+
+        frontend:
+                build:
+                        context: ./frontend
+                        dockerfile: Dockerfile
+                container_name: fantasy_basketball_frontend
+                environment:
+                        VITE_API_URL: http://backend:8000/api
+                ports:
+                        - "5173:5173"
+                volumes:
+                        - ./frontend:/app
+                        - /app/node_modules
+                depends_on:
+                        - backend
+                networks:
+                        - basketball_network
+                command: npm run dev
+
+volumes:
+        postgres_data:
+
+networks:
+        basketball_network:
+                driver: bridge
