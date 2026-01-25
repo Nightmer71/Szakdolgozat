@@ -1,35 +1,117 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+import React, { useState, useEffect } from "react";
+import { AuthProvider, useAuth } from "./context/AuthContext";
+import { DataProvider, useData } from "./context/DataContext";
+import { Login } from "./components/Login";
+import { Register } from "./components/Register";
+import { MainLayout } from "./components/Layout";
+import {
+        HomePage,
+        PlayersPage,
+        TeamsPage,
+        MatchesPage,
+} from "./components/Pages";
+import api from "./api";
+import "../styles/App.css";
 
-function App() {
-  const [count, setCount] = useState(0)
+function AppContent() {
+        const { isAuthenticated, isLoading: authLoading } = useAuth();
+        const { setPlayersData, setIsLoading } = useData();
+        const [currentPage, setCurrentPage] = useState("home");
+        const [view, setView] = useState("login"); // 'login', 'register', 'app'
 
-  return (
-    <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.jsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
-  )
+        useEffect(() => {
+                if (isAuthenticated) {
+                        setView("app");
+                        loadPlayers();
+                } else if (!authLoading) {
+                        setView("login");
+                }
+        }, [isAuthenticated, authLoading]);
+
+        const loadPlayers = async () => {
+                setIsLoading(true);
+                try {
+                        const response = await api.getPlayers(1, "");
+                        setPlayersData(response.results || response);
+                } catch (error) {
+                        console.error("Failed to load players:", error);
+                } finally {
+                        setIsLoading(false);
+                }
+        };
+
+        if (authLoading) {
+                return <div className="loading-screen">Loading...</div>;
+        }
+
+        if (view === "login") {
+                return (
+                        <div className="auth-wrapper">
+                                <Login
+                                        onLoginSuccess={() => {
+                                                setView("app");
+                                                setCurrentPage("home");
+                                        }}
+                                />
+                                <div className="auth-switch">
+                                        Don't have an account?{" "}
+                                        <button
+                                                onClick={() =>
+                                                        setView("register")
+                                                }
+                                                className="link-button"
+                                        >
+                                                Register here
+                                        </button>
+                                </div>
+                        </div>
+                );
+        }
+
+        if (view === "register") {
+                return (
+                        <div className="auth-wrapper">
+                                <Register
+                                        onRegisterSuccess={() => {
+                                                setView("app");
+                                                setCurrentPage("home");
+                                        }}
+                                />
+                                <div className="auth-switch">
+                                        Already have an account?{" "}
+                                        <button
+                                                onClick={() => setView("login")}
+                                                className="link-button"
+                                        >
+                                                Login here
+                                        </button>
+                                </div>
+                        </div>
+                );
+        }
+
+        // Main app view
+        return (
+                <MainLayout
+                        activeTab={currentPage}
+                        onTabChange={setCurrentPage}
+                >
+                        {currentPage === "home" && <HomePage />}
+                        {currentPage === "players" && <PlayersPage />}
+                        {currentPage === "teams" && <TeamsPage />}
+                        {currentPage === "matches" && <MatchesPage />}
+                </MainLayout>
+        );
 }
 
-export default App
+function App() {
+        return (
+                <AuthProvider>
+                        <DataProvider>
+                                <AppContent />
+                        </DataProvider>
+                </AuthProvider>
+        );
+}
+
+export default App;
