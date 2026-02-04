@@ -253,6 +253,83 @@
         font-size: 1.1em;
 }
 
+/* Team Builder */
+.team-builder {
+        padding: 20px;
+        border: 1px solid #eee;
+        background: #fff;
+        border-radius: 8px;
+}
+
+.team-builder-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 10px;
+}
+
+.team-builder-content {
+        display: flex;
+        gap: 20px;
+}
+
+.available-players,
+.team-roster {
+        flex: 1;
+        border: 1px dashed #ddd;
+        padding: 10px;
+        min-height: 200px;
+        border-radius: 6px;
+}
+
+.available-players h4,
+.team-roster h4 {
+        margin-top: 0;
+}
+
+.drop-zone {
+        background: #fbfbfb;
+}
+
+.player-card.small {
+        padding: 10px;
+        font-size: 0.9em;
+        display: flex;
+        justify-content: space-between;
+        gap: 10px;
+        align-items: center;
+}
+
+.builder-modal {
+        position: fixed;
+        top: 20%;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 80%;
+        max-width: 900px;
+        z-index: 1000;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+}
+
+.match-replay {
+        margin-top: 20px;
+        padding: 15px;
+        border-radius: 8px;
+        background: #fff;
+        border: 1px solid #eee;
+}
+
+.timeline {
+        margin-top: 15px;
+        max-height: 260px;
+        overflow: auto;
+}
+
+.timeline-event {
+        padding: 8px 10px;
+        border-bottom: 1px solid #f1f1f1;
+}
+
 @media (max-width: 768px) {
         .stats-grid {
                 grid-template-columns: 1fr;

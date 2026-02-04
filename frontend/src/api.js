@@ -79,10 +79,21 @@ class APIClient {
         }
 
         async addPlayerToTeam(teamId, playerId) {
-                return this.request(`/teams/${teamId}/players/`, {
+                return this.request(`/teams/${teamId}/add_player/`, {
                         method: "POST",
                         body: JSON.stringify({ player_id: playerId }),
                 });
+        }
+
+        async removePlayerFromTeam(teamId, playerId) {
+                return this.request(`/teams/${teamId}/remove_player/`, {
+                        method: "POST",
+                        body: JSON.stringify({ player_id: playerId }),
+                });
+        }
+
+        async getTeam(teamId) {
+                return this.request(`/teams/${teamId}/`);
         }
 
         // Match endpoints
