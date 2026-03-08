@@ -75,16 +75,33 @@ class Command(BaseCommand):
                         position = player_data.get('position', '')
                         jersey = player_data.get('jerseyNumber', '')
 
+                        # Try to fetch per-player stats if available
+                        stats = None
+                        player_id_for_stats = player_data.get('id')
+                        if player_id_for_stats:
+                            try:
+                                stats_url = f'https://publicapi.dev/api/nba/players/{player_id_for_stats}/stats'
+                                stats_resp = requests.get(stats_url, timeout=6)
+                                if stats_resp.ok:
+                                    stats = stats_resp.json()
+                            except requests.RequestException:
+                                # Non-fatal: keep going without stats
+                                stats = None
+
+                        metadata = {
+                            'jersey_number': jersey,
+                            'full_data': player_data,
+                        }
+                        if stats is not None:
+                            metadata['stats'] = stats
+
                         player, created = Player.objects.update_or_create(
                             external_id=external_id,
                             defaults={
                                 'name': name,
                                 'position': position,
                                 'team': team_name,
-                                'metadata': {
-                                    'jersey_number': jersey,
-                                    'full_data': player_data,
-                                }
+                                'metadata': metadata,
                             }
                         )
 

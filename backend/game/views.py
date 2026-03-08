@@ -5,13 +5,15 @@ from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from django.contrib.auth.models import User
 from django.shortcuts import get_object_or_404
 
-from .models import Player, Team, RosterEntry, Match
+from .models import Player, Team, RosterEntry, Match, League, LeagueMembership
 from .serializers import (
     UserSerializer,
     PlayerSerializer,
     TeamSerializer,
     TeamDetailSerializer,
     RosterEntrySerializer,
+    LeagueSerializer,
+    LeagueMembershipSerializer,
     MatchSerializer,
     MatchSimulationSerializer,
 )
@@ -126,6 +128,132 @@ class TeamViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_404_NOT_FOUND
             )
 
+    @action(detail=True, methods=['post'], permission_classes=[permissions.IsAuthenticated])
+    def set_player_active(self, request, pk=None):
+        """Set a roster entry's is_active flag (activate/deactivate player in roster)"""
+        team = self.get_object()
+        player_id = request.data.get('player_id')
+        is_active = request.data.get('is_active')
+
+        if player_id is None or is_active is None:
+            return Response(
+                {'error': 'player_id and is_active are required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        try:
+            roster_entry = RosterEntry.objects.get(team=team, player_id=player_id)
+            roster_entry.is_active = bool(is_active)
+            roster_entry.save()
+            serializer = RosterEntrySerializer(roster_entry)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        except RosterEntry.DoesNotExist:
+            return Response({'error': 'Player not in team'}, status=status.HTTP_404_NOT_FOUND)
+
+
+
+
+class LeagueViewSet(viewsets.ModelViewSet):
+    """API endpoints for managing leagues.
+
+    Users can create leagues and add their teams via membership actions.
+    """
+    queryset = League.objects.all()
+    serializer_class = LeagueSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        user = self.request.user
+        # leagues the user owns + leagues containing any of their teams
+        return League.objects.filter(
+            models.Q(owner=user) |
+            models.Q(memberships__team__owner=user)
+        ).distinct()
+
+    def perform_create(self, serializer):
+        serializer.save(owner=self.request.user)
+
+    @action(detail=True, methods=['post'], permission_classes=[permissions.IsAuthenticated])
+    def join(self, request, pk=None):
+        """Add a team to this league.
+
+        Expects POST {"team_id": <id>} where the team belongs to the
+        requesting user.
+        """
+        league = self.get_object()
+        team_id = request.data.get('team_id')
+        if not team_id:
+            return Response({'error': 'team_id is required'}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            team = Team.objects.get(id=team_id, owner=request.user)
+        except Team.DoesNotExist:
+            return Response({'error': 'Team not found or not owned by you'}, status=status.HTTP_404_NOT_FOUND)
+        membership, created = LeagueMembership.objects.get_or_create(
+            league=league,
+            team=team,
+        )
+        if not created:
+            return Response({'message': 'Team already in league'}, status=status.HTTP_200_OK)
+        serializer = LeagueMembershipSerializer(membership)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+    @action(detail=True, methods=['post'], permission_classes=[permissions.IsAuthenticated])
+    def leave(self, request, pk=None):
+        """Remove a team from this league."""
+        league = self.get_object()
+        team_id = request.data.get('team_id')
+        if not team_id:
+            return Response({'error': 'team_id is required'}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            membership = LeagueMembership.objects.get(league=league, team__id=team_id, team__owner=request.user)
+            membership.delete()
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        except LeagueMembership.DoesNotExist:
+            return Response({'error': 'Team not in league or not yours'}, status=status.HTTP_404_NOT_FOUND)
+
+    @action(detail=True, methods=['get'])
+    def schedule(self, request, pk=None):
+        """Fetch the schedule of matches for this league."""
+        league = self.get_object()
+        matches = league.matches.all()
+        serializer = MatchSerializer(matches, many=True)
+        return Response({'schedule': serializer.data})
+
+    @action(detail=True, methods=['get'])
+    def standings(self, request, pk=None):
+        """Fetch the standings for this league.
+
+        Standings reflect wins/losses and points for/against based on
+        completed match results.
+        """
+        league = self.get_object()
+        serializer = self.get_serializer(league)
+        return Response({'standings': serializer.data['standings']})
+
+    @action(detail=True, methods=['post'], permission_classes=[permissions.IsAuthenticated])
+    def generate_schedule(self, request, pk=None):
+        """Generate a simple round-robin schedule for this league via API."""
+        league = self.get_object()
+        # only league owner or member may generate schedule
+        user = request.user
+        if league.owner != user and not league.memberships.filter(team__owner=user).exists():
+            return Response({'error': 'Not a member of league'}, status=status.HTTP_403_FORBIDDEN)
+        reverse = bool(request.data.get('reverse', False))
+        teams = [m.team for m in league.memberships.all()]
+        if len(teams) < 2:
+            return Response({'detail': 'Need at least two teams'}, status=status.HTTP_400_BAD_REQUEST)
+        created = 0
+        for i in range(len(teams)):
+            for j in range(i + 1, len(teams)):
+                a = teams[i]; b = teams[j]
+                if not Match.objects.filter(league=league, team_a=a, team_b=b).exists() and not Match.objects.filter(league=league, team_a=b, team_b=a).exists():
+                    Match.objects.create(league=league, team_a=a, team_b=b)
+                    created += 1
+                if reverse and not Match.objects.filter(league=league, team_a=b, team_b=a).exists():
+                    Match.objects.create(league=league, team_a=b, team_b=a)
+                    created += 1
+        return Response({'created': created})
+
 
 class MatchViewSet(viewsets.ModelViewSet):
     """
@@ -137,10 +265,12 @@ class MatchViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         """Return matches visible to the current user"""
+        user = self.request.user
         return Match.objects.filter(
-            models.Q(team_a__owner=self.request.user) |
-            models.Q(team_b__owner=self.request.user)
-        )
+            models.Q(team_a__owner=user) |
+            models.Q(team_b__owner=user) |
+            models.Q(league__memberships__team__owner=user)
+        ).distinct()
 
     def perform_create(self, serializer):
         """Automatically set creator to current user"""
@@ -163,13 +293,21 @@ class MatchViewSet(viewsets.ModelViewSet):
         # Simulate the match
         result = simulate_match(team_a, team_b, seed=seed)
 
-        # Create match record
-        match = Match.objects.create(
-            team_a=team_a,
-            team_b=team_b,
-            created_by=request.user,
-            result=result
-        )
+        # Create match record (optionally associate with league)
+        match_kwargs = {
+            'team_a': team_a,
+            'team_b': team_b,
+            'created_by': request.user,
+            'result': result,
+        }
+        league_id = serializer.validated_data.get('league_id')
+        if league_id:
+            # ensure the league exists and user belongs to it
+            league = get_object_or_404(League, id=league_id)
+            if not league.memberships.filter(team__owner=request.user).exists() and league.owner != request.user:
+                return Response({'error': 'Not a member of league'}, status=status.HTTP_403_FORBIDDEN)
+            match_kwargs['league'] = league
+        match = Match.objects.create(**match_kwargs)
 
         return Response(
             MatchSerializer(match).data,

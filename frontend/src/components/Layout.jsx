@@ -105,6 +105,18 @@ export function Sidebar({ activeTab, onTabChange }) {
                                                         🎮 Matches
                                                 </button>
                                         </li>
+                                        <li>
+                                                <button
+                                                        className={`nav-item ${activeTab === "leagues" ? "active" : ""}`}
+                                                        onClick={() =>
+                                                                onTabChange(
+                                                                        "leagues",
+                                                                )
+                                                        }
+                                                >
+                                                        🏆 Leagues
+                                                </button>
+                                        </li>
                                 </ul>
                         </nav>
                 </aside>

@@ -107,8 +107,6 @@ Player data will be synced from the NBA public API:
 
 ## Future Phases
 
-- Month 4: Frontend UI components
-- Month 5: Team builder & match simulation
 - Month 6: Leaderboard system
 - Month 7: Testing & optimization
 - Month 8: Documentation

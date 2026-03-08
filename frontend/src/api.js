@@ -92,19 +92,69 @@ class APIClient {
                 });
         }
 
+        async setPlayerActive(teamId, playerId, isActive) {
+                return this.request(`/teams/${teamId}/set_player_active/`, {
+                        method: "POST",
+                        body: JSON.stringify({
+                                player_id: playerId,
+                                is_active: isActive,
+                        }),
+                });
+        }
+
         async getTeam(teamId) {
                 return this.request(`/teams/${teamId}/`);
         }
 
+        // League endpoints
+        async getLeagues() {
+                return this.request("/leagues/");
+        }
+
+        async createLeague(name) {
+                return this.request("/leagues/", {
+                        method: "POST",
+                        body: JSON.stringify({ name }),
+                });
+        }
+
+        async getLeague(leagueId) {
+                return this.request(`/leagues/${leagueId}/`);
+        }
+
+        async joinLeague(leagueId, teamId) {
+                return this.request(`/leagues/${leagueId}/join/`, {
+                        method: "POST",
+                        body: JSON.stringify({ team_id: teamId }),
+                });
+        }
+
+        async leaveLeague(leagueId, teamId) {
+                return this.request(`/leagues/${leagueId}/leave/`, {
+                        method: "POST",
+                        body: JSON.stringify({ team_id: teamId }),
+                });
+        }
+
+        async getLeagueSchedule(leagueId) {
+                return this.request(`/leagues/${leagueId}/schedule/`);
+        }
+
+        async getLeagueStandings(leagueId) {
+                return this.request(`/leagues/${leagueId}/standings/`);
+        }
+
         // Match endpoints
-        async simulateMatch(teamAId, teamBId, seed = null) {
+        async simulateMatch(teamAId, teamBId, seed = null, leagueId = null) {
+                const body = {
+                        team_a_id: teamAId,
+                        team_b_id: teamBId,
+                        seed,
+                };
+                if (leagueId) body.league_id = leagueId;
                 return this.request("/matches/simulate/", {
                         method: "POST",
-                        body: JSON.stringify({
-                                team_a_id: teamAId,
-                                team_b_id: teamBId,
-                                seed,
-                        }),
+                        body: JSON.stringify(body),
                 });
         }
 }

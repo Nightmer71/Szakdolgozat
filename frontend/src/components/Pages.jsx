@@ -2,7 +2,9 @@ import React, { useEffect, useState } from "react";
 import { useData } from "../context/DataContext";
 import api from "../api";
 import TeamBuilder from "./TeamBuilder";
+import { LeagueListPage, LeagueDetailPage } from "./Leagues";
 import "../styles/Pages.css";
+import "../styles/League.css";
 
 export function HomePage() {
         const { teams, matches } = useData();
@@ -21,11 +23,18 @@ export function HomePage() {
 
                         <div className="stats-grid">
                                 <div className="stat-card">
-                                        <div className="stat-icon">👔</div>
-                                        <h3>My Teams</h3>
-                                        <p className="stat-value">
-                                                {stats.totalTeams}
-                                        </p>
+                                        {filteredPlayers.map((player) => (
+                                                <div
+                                                        key={player.id}
+                                                        className="player-card"
+                                                        draggable
+                                                        onDragStart={(e) =>
+                                                                e.dataTransfer.setData(
+                                                                        "text/player-id",
+                                                                        player.id,
+                                                                )
+                                                        }
+                                                >
                                         <a href="#teams" className="stat-link">
                                                 View Teams
                                         </a>
@@ -43,9 +52,30 @@ export function HomePage() {
                                         >
                                                 View Matches
                                         </a>
-                                </div>
+                                                        <button
+                                                                className="btn btn-small"
+                                                                onClick={async () => {
+                                                                        if (!selectedTeam) {
+                                                                                alert(
+                                                                                        "Select a team first (click a team and press View) or use the Teams page Edit button",
+                                                                                );
+                                                                                return;
+                                                                        }
 
-                                <div className="stat-card">
+                                                                        try {
+                                                                                await api.addPlayerToTeam(
+                                                                                        selectedTeam.id,
+                                                                                        player.id,
+                                                                                );
+                                                                                alert("Player added to team");
+                                                                        } catch (err) {
+                                                                                console.error("Add to team failed", err);
+                                                                                alert("Failed to add player to team");
+                                                                        }
+                                                                }}
+                                                        >
+                                                                Add to Team
+                                                        </button>
                                         <div className="stat-icon">👥</div>
                                         <h3>Available Players</h3>
                                         <p className="stat-value">-</p>
@@ -592,6 +622,41 @@ export function MatchesPage() {
                                                         {scoreB}
                                                 </span>
                                         </div>
+                                        {replayMatch.summary && (
+                                                <div className="match-summary">
+                                                        <h4>Quarter Scores</h4>
+                                                        <div className="quarters">
+                                                                {replayMatch.summary.quarters.map(
+                                                                        (q, idx) => (
+                                                                                <div key={idx}>
+                                                                                        Q{idx + 1}: {q.team_a} - {q.team_b}
+                                                                                </div>
+                                                                        ),
+                                                                )}
+                                                        </div>
+                                                        <h4>Top Scorers</h4>
+                                                        <div className="top-scorers">
+                                                                <div className="team-scorers">
+                                                                        <strong>{replayMatch.team_a.name}:</strong>{' '}
+                                                                        {replayMatch.summary.top_scorers.team_a
+                                                                                .map(
+                                                                                        (p) =>
+                                                                                                `${p.player_id}(${p.points})`,
+                                                                                )
+                                                                                .join(', ')}
+                                                                </div>
+                                                                <div className="team-scorers">
+                                                                        <strong>{replayMatch.team_b.name}:</strong>{' '}
+                                                                        {replayMatch.summary.top_scorers.team_b
+                                                                                .map(
+                                                                                        (p) =>
+                                                                                                `${p.player_id}(${p.points})`,
+                                                                                )
+                                                                                .join(', ')}
+                                                                </div>
+                                                        </div>
+                                                </div>
+                                        )}
 
                                         <div className="timeline">
                                                 {displayTimeline.map(

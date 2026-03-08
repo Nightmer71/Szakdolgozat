@@ -9,6 +9,7 @@ import {
         PlayersPage,
         TeamsPage,
         MatchesPage,
+        LeagueListPage,
 } from "./components/Pages";
 import api from "./api";
 import "../styles/App.css";
@@ -100,6 +101,7 @@ function AppContent() {
                         {currentPage === "players" && <PlayersPage />}
                         {currentPage === "teams" && <TeamsPage />}
                         {currentPage === "matches" && <MatchesPage />}
+                        {currentPage === "leagues" && <LeagueListPage />}
                 </MainLayout>
         );
 }

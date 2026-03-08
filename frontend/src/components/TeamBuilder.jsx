@@ -4,12 +4,15 @@ import "../styles/Pages.css";
 
 export default function TeamBuilder({ team, onClose, onUpdated }) {
         const [availablePlayers, setAvailablePlayers] = useState([]);
-        const [teamData, setTeamData] = useState(team);
+        const [teamData, setTeamData] = useState(team || { roster: [] });
         const [isLoading, setIsLoading] = useState(false);
+        const [actionLoading, setActionLoading] = useState(false);
+        const [draggingOver, setDraggingOver] = useState(false);
 
         useEffect(() => {
                 loadAvailablePlayers();
                 refreshTeam();
+                // eslint-disable-next-line react-hooks/exhaustive-deps
         }, [team]);
 
         const loadAvailablePlayers = async () => {
@@ -23,6 +26,7 @@ export default function TeamBuilder({ team, onClose, onUpdated }) {
         };
 
         const refreshTeam = async () => {
+                if (!team) return;
                 try {
                         setIsLoading(true);
                         const updated = await api.getTeam(team.id);
@@ -35,44 +39,85 @@ export default function TeamBuilder({ team, onClose, onUpdated }) {
                 }
         };
 
+        const allowDrop = (e) => {
+                e.preventDefault();
+        };
+
+        const handleDragEnter = (e) => {
+                e.preventDefault();
+                setDraggingOver(true);
+        };
+
+        const handleDragLeave = (e) => {
+                e.preventDefault();
+                setDraggingOver(false);
+        };
+
         const handleDrop = async (e) => {
                 e.preventDefault();
+                setDraggingOver(false);
                 const playerId = e.dataTransfer.getData("text/player-id");
-                if (!playerId) return;
+                if (!playerId || !team) return;
                 try {
+                        setActionLoading(true);
                         await api.addPlayerToTeam(team.id, playerId);
                         await refreshTeam();
                 } catch (err) {
                         console.error("Failed to add player", err);
+                } finally {
+                        setActionLoading(false);
                 }
         };
 
-        const allowDrop = (e) => e.preventDefault();
-
         const startDrag = (e, playerId) => {
-                e.dataTransfer.setData("text/player-id", playerId);
+                try {
+                        e.dataTransfer.setData("text/player-id", playerId);
+                } catch (err) {
+                        // ignore
+                }
         };
 
         const handleAddClick = async (playerId) => {
+                if (!team) return alert("Select a team first to add players");
                 try {
+                        setActionLoading(true);
                         await api.addPlayerToTeam(team.id, playerId);
                         await refreshTeam();
                 } catch (err) {
                         console.error("Failed to add player", err);
+                } finally {
+                        setActionLoading(false);
                 }
         };
 
         const handleRemove = async (playerId) => {
+                if (!team) return;
                 try {
+                        setActionLoading(true);
                         await api.removePlayerFromTeam(team.id, playerId);
                         await refreshTeam();
                 } catch (err) {
                         console.error("Failed to remove player", err);
+                } finally {
+                        setActionLoading(false);
+                }
+        };
+
+        const handleToggleActive = async (playerId, current) => {
+                if (!team) return;
+                try {
+                        setActionLoading(true);
+                        await api.setPlayerActive(team.id, playerId, !current);
+                        await refreshTeam();
+                } catch (err) {
+                        console.error("Failed to toggle active", err);
+                } finally {
+                        setActionLoading(false);
                 }
         };
 
         return (
-                <div className="team-builder">
+                <div className="team-builder" aria-live="polite">
                         <div className="team-builder-header">
                                 <h3>Editing: {team?.name}</h3>
                                 <button
@@ -86,7 +131,8 @@ export default function TeamBuilder({ team, onClose, onUpdated }) {
                         <div className="team-builder-content">
                                 <div
                                         className="available-players"
-                                        onDragOver={allowDrop}
+                                        role="listbox"
+                                        aria-label="available players"
                                 >
                                         <h4>Available Players</h4>
                                         <div className="players-list">
@@ -103,24 +149,45 @@ export default function TeamBuilder({ team, onClose, onUpdated }) {
                                                                                 p.id,
                                                                         )
                                                                 }
+                                                                onClick={() =>
+                                                                        handleAddClick(
+                                                                                p.id,
+                                                                        )
+                                                                }
                                                         >
-                                                                <strong>
-                                                                        {p.name}
-                                                                </strong>
-                                                                <p>
-                                                                        {
-                                                                                p.position
-                                                                        }
-                                                                </p>
+                                                                <div
+                                                                        style={{
+                                                                                flex: 1,
+                                                                        }}
+                                                                >
+                                                                        <strong>
+                                                                                {
+                                                                                        p.name
+                                                                                }
+                                                                        </strong>
+                                                                        <p>
+                                                                                {
+                                                                                        p.position
+                                                                                }
+                                                                        </p>
+                                                                </div>
                                                                 <button
                                                                         className="btn btn-small"
+                                                                        disabled={
+                                                                                actionLoading
+                                                                        }
+                                                                        aria-busy={
+                                                                                actionLoading
+                                                                        }
                                                                         onClick={() =>
                                                                                 handleAddClick(
                                                                                         p.id,
                                                                                 )
                                                                         }
                                                                 >
-                                                                        Add
+                                                                        {actionLoading
+                                                                                ? "..."
+                                                                                : "Add"}
                                                                 </button>
                                                         </div>
                                                 ))}
@@ -128,9 +195,13 @@ export default function TeamBuilder({ team, onClose, onUpdated }) {
                                 </div>
 
                                 <div
-                                        className="team-roster drop-zone"
+                                        className={`team-roster drop-zone ${draggingOver ? "drop-active" : ""}`}
+                                        role="listbox"
+                                        aria-label={`Roster for ${team?.name}`}
                                         onDrop={handleDrop}
                                         onDragOver={allowDrop}
+                                        onDragEnter={handleDragEnter}
+                                        onDragLeave={handleDragLeave}
                                 >
                                         <h4>Team Roster</h4>
                                         {isLoading ? (
@@ -155,32 +226,71 @@ export default function TeamBuilder({ team, onClose, onUpdated }) {
                                                                                         }
                                                                                         className="player-card small"
                                                                                 >
-                                                                                        <strong>
-                                                                                                {
-                                                                                                        r
-                                                                                                                .player
-                                                                                                                .name
-                                                                                                }
-                                                                                        </strong>
-                                                                                        <p>
-                                                                                                {
-                                                                                                        r
-                                                                                                                .player
-                                                                                                                .position
-                                                                                                }
-                                                                                        </p>
-                                                                                        <button
-                                                                                                className="btn btn-danger btn-small"
-                                                                                                onClick={() =>
-                                                                                                        handleRemove(
+                                                                                        <div
+                                                                                                style={{
+                                                                                                        flex: 1,
+                                                                                                }}
+                                                                                        >
+                                                                                                <strong>
+                                                                                                        {
                                                                                                                 r
                                                                                                                         .player
-                                                                                                                        .id,
-                                                                                                        )
-                                                                                                }
+                                                                                                                        .name
+                                                                                                        }
+                                                                                                </strong>
+                                                                                                <p>
+                                                                                                        {
+                                                                                                                r
+                                                                                                                        .player
+                                                                                                                        .position
+                                                                                                        }
+                                                                                                </p>
+                                                                                        </div>
+                                                                                        <div
+                                                                                                style={{
+                                                                                                        display: "flex",
+                                                                                                        gap: 8,
+                                                                                                }}
                                                                                         >
-                                                                                                Remove
-                                                                                        </button>
+                                                                                                <button
+                                                                                                        className={`btn btn-small ${r.is_active ? "btn-primary" : ""}`}
+                                                                                                        onClick={() =>
+                                                                                                                handleToggleActive(
+                                                                                                                        r
+                                                                                                                                .player
+                                                                                                                                .id,
+                                                                                                                        r.is_active,
+                                                                                                                )
+                                                                                                        }
+                                                                                                        aria-pressed={
+                                                                                                                r.is_active
+                                                                                                        }
+                                                                                                        disabled={
+                                                                                                                actionLoading
+                                                                                                        }
+                                                                                                >
+                                                                                                        {r.is_active
+                                                                                                                ? "Active"
+                                                                                                                : "Bench"}
+                                                                                                </button>
+                                                                                                <button
+                                                                                                        className="btn btn-danger btn-small"
+                                                                                                        onClick={() =>
+                                                                                                                handleRemove(
+                                                                                                                        r
+                                                                                                                                .player
+                                                                                                                                .id,
+                                                                                                                )
+                                                                                                        }
+                                                                                                        disabled={
+                                                                                                                actionLoading
+                                                                                                        }
+                                                                                                >
+                                                                                                        {actionLoading
+                                                                                                                ? "..."
+                                                                                                                : "Remove"}
+                                                                                                </button>
+                                                                                        </div>
                                                                                 </div>
                                                                         ),
                                                                 )

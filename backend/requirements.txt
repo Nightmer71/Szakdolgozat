@@ -2,4 +2,5 @@ Django==6.0
 djangorestframework==3.16.1
 django-cors-headers==4.9.0
 psycopg2-binary==2.9.11
-requests==2.31.0djangorestframework-simplejwt==5.3.2
+requests==2.31.0
+djangorestframework-simplejwt==5.3.1

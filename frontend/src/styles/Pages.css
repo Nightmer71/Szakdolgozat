@@ -291,6 +291,17 @@
         background: #fbfbfb;
 }
 
+.drop-zone.active,
+.drop-zone.drop-active {
+        border-color: #4caf50;
+        background: linear-gradient(
+                90deg,
+                rgba(76, 175, 80, 0.04),
+                rgba(76, 175, 80, 0.02)
+        );
+        box-shadow: 0 4px 12px rgba(76, 175, 80, 0.06);
+}
+
 .player-card.small {
         padding: 10px;
         font-size: 0.9em;
@@ -298,6 +309,16 @@
         justify-content: space-between;
         gap: 10px;
         align-items: center;
+        cursor: grab;
+}
+.player-card.small:active {
+        cursor: grabbing;
+}
+
+.btn[disabled],
+.btn[disabled]:hover {
+        opacity: 0.6;
+        cursor: not-allowed;
 }
 
 .builder-modal {
@@ -328,6 +349,22 @@
 .timeline-event {
         padding: 8px 10px;
         border-bottom: 1px solid #f1f1f1;
+}
+
+.match-summary {
+        margin-top: 16px;
+        background: #fafafa;
+        padding: 12px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+}
+.match-summary .quarters {
+        display: flex;
+        gap: 10px;
+        margin-bottom: 8px;
+}
+.match-summary .team-scorers {
+        margin-bottom: 4px;
 }
 
 @media (max-width: 768px) {

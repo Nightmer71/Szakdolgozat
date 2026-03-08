@@ -36,6 +36,7 @@ class RosterEntry(models.Model):
 
 
 class Match(models.Model):
+    league = models.ForeignKey('League', on_delete=models.CASCADE, related_name='matches', blank=True, null=True)
     team_a = models.ForeignKey(Team, on_delete=models.CASCADE, related_name='home_matches')
     team_b = models.ForeignKey(Team, on_delete=models.CASCADE, related_name='away_matches')
     scheduled_at = models.DateTimeField(blank=True, null=True)
@@ -44,4 +45,39 @@ class Match(models.Model):
     result = models.JSONField(null=True, blank=True)
 
     def __str__(self):
-        return f"Match {self.id}: {self.team_a} vs {self.team_b}"
+        base = f"Match {self.id}: {self.team_a} vs {self.team_b}"
+        if self.league:
+            base = f"{base} (league={self.league.name})"
+        return base
+
+
+class League(models.Model):
+    """A competition container that can hold multiple teams.
+
+    Users create leagues and then add their teams.  League data drives
+    scheduling and standings in later months.
+    """
+    name = models.CharField(max_length=128)
+    owner = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='leagues',
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    # optional slug or privacy fields could be added later
+
+    def __str__(self):
+        return f"League {self.name} (owner={self.owner})"
+
+
+class LeagueMembership(models.Model):
+    """Association between a team and a league."""
+    league = models.ForeignKey(League, on_delete=models.CASCADE, related_name='memberships')
+    team = models.ForeignKey(Team, on_delete=models.CASCADE, related_name='league_memberships')
+    joined_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = (('league', 'team'),)
+
+    def __str__(self):
+        return f"{self.team} in {self.league}"
