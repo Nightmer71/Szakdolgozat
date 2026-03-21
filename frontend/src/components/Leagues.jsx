@@ -286,6 +286,22 @@ export function LeagueDetailPage({ leagueId }) {
                                                 </button>
                                         </div>
 
+                                        <div className="league-section">
+                                                <h3>Draft</h3>
+                                                <p>
+                                                        Organize a player draft
+                                                        for this league.
+                                                </p>
+                                                <button
+                                                        className="btn btn-primary"
+                                                        onClick={() =>
+                                                                (window.location.href = `/draft/${leagueId}`)
+                                                        }
+                                                >
+                                                        🏆 Go to Draft
+                                                </button>
+                                        </div>
+
                                         {schedule.length > 0 && (
                                                 <div className="league-section">
                                                         <h3>Schedule</h3>

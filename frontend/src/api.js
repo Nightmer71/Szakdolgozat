@@ -144,6 +144,44 @@ class APIClient {
                 return this.request(`/leagues/${leagueId}/standings/`);
         }
 
+        // Draft endpoints
+        async getDraft(leagueId) {
+                return this.request(`/drafts/leagues/${leagueId}/draft/`);
+        }
+
+        async createDraft(leagueId, totalRounds = 10) {
+                return this.request(`/drafts/leagues/${leagueId}/draft/`, {
+                        method: "POST",
+                        body: JSON.stringify({ total_rounds: totalRounds }),
+                });
+        }
+
+        async startDraft(leagueId) {
+                return this.request(
+                        `/drafts/leagues/${leagueId}/draft/start/`,
+                        {
+                                method: "POST",
+                        },
+                );
+        }
+
+        async makeDraftPick(leagueId, playerId) {
+                return this.request(`/drafts/leagues/${leagueId}/draft/pick/`, {
+                        method: "POST",
+                        body: JSON.stringify({ player_id: playerId }),
+                });
+        }
+
+        async getDraftPicks(leagueId) {
+                return this.request(`/drafts/leagues/${leagueId}/draft/picks/`);
+        }
+
+        async getAvailablePlayers(leagueId) {
+                return this.request(
+                        `/drafts/leagues/${leagueId}/draft/available-players/`,
+                );
+        }
+
         // Match endpoints
         async simulateMatch(teamAId, teamBId, seed = null, leagueId = null) {
                 const body = {

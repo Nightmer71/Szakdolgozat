@@ -5,7 +5,7 @@ from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from django.contrib.auth.models import User
 from django.shortcuts import get_object_or_404
 
-from .models import Player, Team, RosterEntry, Match, League, LeagueMembership
+from .models import Player, Team, RosterEntry, Match, League, LeagueMembership, Draft, DraftPick
 from .serializers import (
     UserSerializer,
     PlayerSerializer,
@@ -16,6 +16,10 @@ from .serializers import (
     LeagueMembershipSerializer,
     MatchSerializer,
     MatchSimulationSerializer,
+    DraftSerializer,
+    DraftPickSerializer,
+    DraftCreateSerializer,
+    DraftPickCreateSerializer,
 )
 from .match_simulator import simulate_match
 
@@ -313,6 +317,144 @@ class MatchViewSet(viewsets.ModelViewSet):
             MatchSerializer(match).data,
             status=status.HTTP_201_CREATED
         )
+
+
+class DraftViewSet(viewsets.ViewSet):
+    """API endpoints for managing drafts in leagues."""
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_draft_for_league(self, league_id):
+        """Get draft for a league, ensuring user has access."""
+        league = get_object_or_404(League, id=league_id)
+        # Check if user owns league or has teams in it
+        if (league.owner != self.request.user and
+            not league.memberships.filter(team__owner=self.request.user).exists()):
+            raise permissions.PermissionDenied("Not a member of this league")
+        return league.draft
+
+    @action(detail=False, methods=['get'], url_path='leagues/(?P<league_id>[^/.]+)/draft')
+    def get_draft(self, request, league_id=None):
+        """Get the draft for a specific league."""
+        try:
+            draft = self.get_draft_for_league(league_id)
+            serializer = DraftSerializer(draft)
+            return Response(serializer.data)
+        except League.draft.RelatedObjectDoesNotExist:
+            return Response({'detail': 'No draft found for this league'}, status=status.HTTP_404_NOT_FOUND)
+
+    @action(detail=False, methods=['post'], url_path='leagues/(?P<league_id>[^/.]+)/draft')
+    def create_draft(self, request, league_id=None):
+        """Create a new draft for a league (league owner only)."""
+        league = get_object_or_404(League, id=league_id)
+        if league.owner != request.user:
+            return Response({'error': 'Only league owner can create drafts'}, status=status.HTTP_403_FORBIDDEN)
+
+        serializer = DraftCreateSerializer(data=request.data, context={'league': league})
+        serializer.is_valid(raise_exception=True)
+
+        # Create pick order (snake draft)
+        memberships = list(league.memberships.all())
+        teams = [m.team for m in memberships]
+        total_rounds = serializer.validated_data['total_rounds']
+
+        pick_order = []
+        for round_num in range(total_rounds):
+            if round_num % 2 == 0:
+                # Even rounds: normal order
+                round_order = [team.id for team in teams]
+            else:
+                # Odd rounds: reverse order (snake)
+                round_order = [team.id for team in reversed(teams)]
+            pick_order.append(round_order)
+
+        draft = Draft.objects.create(
+            league=league,
+            total_rounds=total_rounds,
+            pick_order=pick_order
+        )
+
+        serializer = DraftSerializer(draft)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+    @action(detail=False, methods=['post'], url_path='leagues/(?P<league_id>[^/.]+)/draft/start')
+    def start_draft(self, request, league_id=None):
+        """Start a draft (league owner only)."""
+        league = get_object_or_404(League, id=league_id)
+        if league.owner != request.user:
+            return Response({'error': 'Only league owner can start drafts'}, status=status.HTTP_403_FORBIDDEN)
+
+        try:
+            draft = league.draft
+        except League.draft.RelatedObjectDoesNotExist:
+            return Response({'error': 'No draft found for this league'}, status=status.HTTP_404_NOT_FOUND)
+
+        if draft.status != 'pending':
+            return Response({'error': 'Draft is not in pending state'}, status=status.HTTP_400_BAD_REQUEST)
+
+        draft.status = 'active'
+        draft.save()
+
+        serializer = DraftSerializer(draft)
+        return Response(serializer.data)
+
+    @action(detail=False, methods=['post'], url_path='leagues/(?P<league_id>[^/.]+)/draft/pick')
+    def make_pick(self, request, league_id=None):
+        """Make a draft pick."""
+        league = get_object_or_404(League, id=league_id)
+        try:
+            draft = league.draft
+        except League.draft.RelatedObjectDoesNotExist:
+            return Response({'error': 'No draft found for this league'}, status=status.HTTP_404_NOT_FOUND)
+
+        serializer = DraftPickCreateSerializer(
+            data=request.data,
+            context={'draft': draft, 'user': request.user}
+        )
+        serializer.is_valid(raise_exception=True)
+
+        player_id = serializer.validated_data['player_id']
+        current_team = draft.get_current_team()
+        player = get_object_or_404(Player, id=player_id)
+
+        # Create the pick
+        pick = DraftPick.objects.create(
+            draft=draft,
+            team=current_team,
+            player=player,
+            round_number=draft.current_round,
+            pick_number=draft.current_pick
+        )
+
+        # Advance the draft
+        draft.advance_pick()
+
+        pick_serializer = DraftPickSerializer(pick)
+        return Response(pick_serializer.data, status=status.HTTP_201_CREATED)
+
+    @action(detail=False, methods=['get'], url_path='leagues/(?P<league_id>[^/.]+)/draft/picks')
+    def get_picks(self, request, league_id=None):
+        """Get all picks for a league's draft."""
+        try:
+            draft = self.get_draft_for_league(league_id)
+            picks = draft.picks.all()
+            serializer = DraftPickSerializer(picks, many=True)
+            return Response(serializer.data)
+        except League.draft.RelatedObjectDoesNotExist:
+            return Response({'detail': 'No draft found for this league'}, status=status.HTTP_404_NOT_FOUND)
+
+    @action(detail=False, methods=['get'], url_path='leagues/(?P<league_id>[^/.]+)/draft/available-players')
+    def get_available_players(self, request, league_id=None):
+        """Get players available for drafting."""
+        try:
+            draft = self.get_draft_for_league(league_id)
+            # Get all drafted player IDs
+            drafted_player_ids = set(draft.picks.values_list('player_id', flat=True))
+            # Get all players not drafted
+            available_players = Player.objects.exclude(id__in=drafted_player_ids)
+            serializer = PlayerSerializer(available_players, many=True)
+            return Response(serializer.data)
+        except League.draft.RelatedObjectDoesNotExist:
+            return Response({'detail': 'No draft found for this league'}, status=status.HTTP_404_NOT_FOUND)
 
 
 class RegisterView(viewsets.ViewSet):

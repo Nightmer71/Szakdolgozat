@@ -81,3 +81,80 @@ class LeagueMembership(models.Model):
 
     def __str__(self):
         return f"{self.team} in {self.league}"
+
+
+class Draft(models.Model):
+    """A player draft for a league.
+
+    Manages the draft process where teams select players in order.
+    """
+    STATUS_CHOICES = [
+        ('pending', 'Pending'),
+        ('active', 'Active'),
+        ('completed', 'Completed'),
+    ]
+
+    league = models.OneToOneField(League, on_delete=models.CASCADE, related_name='draft')
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+    current_round = models.PositiveIntegerField(default=1)
+    current_pick = models.PositiveIntegerField(default=1)
+    total_rounds = models.PositiveIntegerField(default=10)
+    pick_order = models.JSONField(help_text="JSON array of team IDs in pick order per round")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Draft for {self.league.name} (Round {self.current_round}, Pick {self.current_pick})"
+
+    def get_current_team(self):
+        """Get the team whose turn it is to pick."""
+        if self.status != 'active':
+            return None
+
+        round_index = self.current_round - 1
+        if round_index >= len(self.pick_order):
+            return None
+
+        round_order = self.pick_order[round_index]
+        pick_index = self.current_pick - 1
+
+        if pick_index >= len(round_order):
+            return None
+
+        team_id = round_order[pick_index]
+        return Team.objects.get(id=team_id)
+
+    def advance_pick(self):
+        """Move to the next pick in the draft."""
+        round_index = self.current_round - 1
+        round_order = self.pick_order[round_index]
+
+        if self.current_pick >= len(round_order):
+            # End of round, go to next round
+            self.current_round += 1
+            self.current_pick = 1
+
+            if self.current_round > self.total_rounds:
+                # Draft complete
+                self.status = 'completed'
+        else:
+            # Next pick in same round
+            self.current_pick += 1
+
+        self.save()
+
+
+class DraftPick(models.Model):
+    """A single pick made in a draft."""
+    draft = models.ForeignKey(Draft, on_delete=models.CASCADE, related_name='picks')
+    team = models.ForeignKey(Team, on_delete=models.CASCADE, related_name='draft_picks')
+    player = models.ForeignKey(Player, on_delete=models.CASCADE, related_name='draft_picks')
+    round_number = models.PositiveIntegerField()
+    pick_number = models.PositiveIntegerField()
+    pick_time = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = (('draft', 'player'),)  # Player can only be drafted once
+        ordering = ['pick_number']
+
+    def __str__(self):
+        return f"Round {self.round_number} Pick {self.pick_number}: {self.team} selects {self.player}"

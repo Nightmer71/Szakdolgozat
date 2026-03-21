@@ -9,8 +9,9 @@ import {
         PlayersPage,
         TeamsPage,
         MatchesPage,
-        LeagueListPage,
 } from "./components/Pages";
+import { LeagueListPage, LeagueDetailPage } from "./components/Leagues";
+import { DraftPage } from "./components/DraftPage";
 import api from "./api";
 import "../styles/App.css";
 
@@ -19,6 +20,11 @@ function AppContent() {
         const { setPlayersData, setIsLoading } = useData();
         const [currentPage, setCurrentPage] = useState("home");
         const [view, setView] = useState("login"); // 'login', 'register', 'app'
+
+        // Check URL for specific pages
+        const urlPath = window.location.pathname;
+        const leagueMatch = urlPath.match(/^\/league\/(\d+)$/);
+        const draftMatch = urlPath.match(/^\/draft\/(\d+)$/);
 
         useEffect(() => {
                 if (isAuthenticated) {
@@ -92,6 +98,30 @@ function AppContent() {
         }
 
         // Main app view
+        if (leagueMatch) {
+                return (
+                        <MainLayout
+                                activeTab="leagues"
+                                onTabChange={setCurrentPage}
+                        >
+                                <LeagueDetailPage
+                                        leagueId={parseInt(leagueMatch[1])}
+                                />
+                        </MainLayout>
+                );
+        }
+
+        if (draftMatch) {
+                return (
+                        <MainLayout
+                                activeTab="leagues"
+                                onTabChange={setCurrentPage}
+                        >
+                                <DraftPage leagueId={parseInt(draftMatch[1])} />
+                        </MainLayout>
+                );
+        }
+
         return (
                 <MainLayout
                         activeTab={currentPage}

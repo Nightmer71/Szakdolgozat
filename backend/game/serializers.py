@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from django.contrib.auth.models import User
-from .models import Player, Team, RosterEntry, Match, League, LeagueMembership
+from .models import Player, Team, RosterEntry, Match, League, LeagueMembership, Draft, DraftPick
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -190,4 +190,87 @@ class MatchSimulationSerializer(serializers.Serializer):
     def validate(self, data):
         if data['team_a_id'] == data['team_b_id']:
             raise serializers.ValidationError("Teams must be different.")
+        return data
+
+
+class DraftSerializer(serializers.ModelSerializer):
+    """Serializer for draft management"""
+    league = LeagueSerializer(read_only=True)
+    current_team = serializers.SerializerMethodField()
+    total_teams = serializers.SerializerMethodField()
+    total_picks = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Draft
+        fields = [
+            'id', 'league', 'status', 'current_round', 'current_pick',
+            'total_rounds', 'pick_order', 'current_team', 'total_teams',
+            'total_picks', 'created_at'
+        ]
+        read_only_fields = ['id', 'created_at', 'current_team']
+
+    def get_current_team(self, obj):
+        team = obj.get_current_team()
+        if team:
+            return TeamSerializer(team).data
+        return None
+
+    def get_total_teams(self, obj):
+        return len(obj.league.memberships.all())
+
+    def get_total_picks(self, obj):
+        return obj.total_rounds * self.get_total_teams(obj)
+
+
+class DraftPickSerializer(serializers.ModelSerializer):
+    """Serializer for draft picks"""
+    team = TeamSerializer(read_only=True)
+    player = PlayerSerializer(read_only=True)
+
+    class Meta:
+        model = DraftPick
+        fields = [
+            'id', 'draft', 'team', 'player', 'round_number',
+            'pick_number', 'pick_time'
+        ]
+        read_only_fields = ['id', 'pick_time']
+
+
+class DraftCreateSerializer(serializers.Serializer):
+    """Serializer for creating a new draft"""
+    total_rounds = serializers.IntegerField(min_value=1, max_value=20, default=10)
+
+    def validate(self, data):
+        league = self.context['league']
+        if hasattr(league, 'draft'):
+            raise serializers.ValidationError("League already has a draft.")
+        return data
+
+
+class DraftPickCreateSerializer(serializers.Serializer):
+    """Serializer for making a draft pick"""
+    player_id = serializers.IntegerField()
+
+    def validate(self, data):
+        draft = self.context['draft']
+        user = self.context['user']
+
+        # Check if draft is active
+        if draft.status != 'active':
+            raise serializers.ValidationError("Draft is not active.")
+
+        # Check if it's the user's turn
+        current_team = draft.get_current_team()
+        if not current_team or current_team.owner != user:
+            raise serializers.ValidationError("It's not your turn to pick.")
+
+        # Check if player is available
+        player_id = data['player_id']
+        if DraftPick.objects.filter(draft=draft, player_id=player_id).exists():
+            raise serializers.ValidationError("Player has already been drafted.")
+
+        # Check if team already has this player
+        if current_team.roster.filter(player_id=player_id).exists():
+            raise serializers.ValidationError("Your team already has this player.")
+
         return data

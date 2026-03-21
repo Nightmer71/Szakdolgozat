@@ -8,7 +8,7 @@ from django.contrib import admin
 from django.urls import path, include
 from rest_framework import routers
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
-from game.views import PlayerViewSet, TeamViewSet, MatchViewSet, LeagueViewSet, RegisterView
+from game.views import PlayerViewSet, TeamViewSet, MatchViewSet, LeagueViewSet, DraftViewSet, RegisterView
 
 # Create a router instance for DRF viewsets
 router = routers.DefaultRouter()
@@ -16,6 +16,7 @@ router.register(r'players', PlayerViewSet, basename='player')
 router.register(r'teams', TeamViewSet, basename='team')
 router.register(r'leagues', LeagueViewSet, basename='league')
 router.register(r'matches', MatchViewSet, basename='match')
+router.register(r'drafts', DraftViewSet, basename='draft')
 
 urlpatterns = [
     path('admin/', admin.site.urls),
