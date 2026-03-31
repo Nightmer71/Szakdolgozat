@@ -11,7 +11,59 @@ export function DraftPage({ leagueId }) {
         const [selectedPlayer, setSelectedPlayer] = useState(null);
 
         useEffect(() => {
+                let ws;
+                const initWebSocket = () => {
+                        const protocol =
+                                window.location.protocol === "https:"
+                                        ? "wss"
+                                        : "ws";
+                        const host = window.location.host;
+                        ws = new WebSocket(
+                                `${protocol}://${host}/ws/drafts/${leagueId}/`,
+                        );
+
+                        ws.onopen = () => {
+                                console.log("Draft WebSocket connected");
+                        };
+
+                        ws.onmessage = (event) => {
+                                const data = JSON.parse(event.data);
+                                if (
+                                        data.type === "draft.state" ||
+                                        data.type === "draft.update"
+                                ) {
+                                        const payload = data.payload || data;
+                                        if (payload.draft) {
+                                                setDraft(payload.draft);
+                                        }
+                                        if (payload.picks) {
+                                                setPicks(payload.picks);
+                                        }
+                                        if (payload.available_players) {
+                                                setAvailablePlayers(
+                                                        payload.available_players,
+                                                );
+                                        }
+                                }
+                        };
+
+                        ws.onclose = () => {
+                                console.log("Draft WebSocket disconnected");
+                        };
+
+                        ws.onerror = (err) => {
+                                console.error("Draft WebSocket error", err);
+                        };
+                };
+
                 loadDraft();
+                initWebSocket();
+
+                return () => {
+                        if (ws) {
+                                ws.close();
+                        }
+                };
         }, [leagueId]);
 
         const loadDraft = async () => {

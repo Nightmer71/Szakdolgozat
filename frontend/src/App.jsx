@@ -13,7 +13,7 @@ import {
 import { LeagueListPage, LeagueDetailPage } from "./components/Leagues";
 import { DraftPage } from "./components/DraftPage";
 import api from "./api";
-import "../styles/App.css";
+import "./styles/App.css";
 
 function AppContent() {
         const { isAuthenticated, isLoading: authLoading } = useAuth();
