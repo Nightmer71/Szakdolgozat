@@ -104,7 +104,3 @@ Player data will be synced from the NBA public API:
 2. Make changes following the code structure
 3. Test locally
 4. Submit PR with description
-
-## Future Phases
-
-- Month 8: Documentation

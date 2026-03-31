@@ -4,6 +4,8 @@ from rest_framework.response import Response
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from django.contrib.auth.models import User
 from django.shortcuts import get_object_or_404
+from asgiref.sync import async_to_sync
+from channels.layers import get_channel_layer
 
 from .models import Player, Team, RosterEntry, Match, League, LeagueMembership, Draft, DraftPick
 from .serializers import (
@@ -332,6 +334,29 @@ class DraftViewSet(viewsets.ViewSet):
             raise permissions.PermissionDenied("Not a member of this league")
         return league.draft
 
+    def broadcast_draft_update(self, draft):
+        channel_layer = get_channel_layer()
+        if not channel_layer:
+            return
+
+        picks = DraftPickSerializer(draft.picks.select_related('team', 'player').all(), many=True).data
+        drafted_ids = draft.picks.values_list('player_id', flat=True)
+        available_players = PlayerSerializer(Player.objects.exclude(id__in=drafted_ids), many=True).data
+
+        payload = {
+            'draft': DraftSerializer(draft).data,
+            'picks': picks,
+            'available_players': available_players,
+        }
+
+        async_to_sync(channel_layer.group_send)(
+            f"draft_{draft.league.id}",
+            {
+                'type': 'draft_update',
+                'payload': payload,
+            }
+        )
+
     @action(detail=False, methods=['get'], url_path='leagues/(?P<league_id>[^/.]+)/draft')
     def get_draft(self, request, league_id=None):
         """Get the draft for a specific league."""
@@ -394,6 +419,8 @@ class DraftViewSet(viewsets.ViewSet):
         draft.status = 'active'
         draft.save()
 
+        self.broadcast_draft_update(draft)
+
         serializer = DraftSerializer(draft)
         return Response(serializer.data)
 
@@ -427,6 +454,9 @@ class DraftViewSet(viewsets.ViewSet):
 
         # Advance the draft
         draft.advance_pick()
+
+        # broadcast draft updates to websocket subscribers
+        self.broadcast_draft_update(draft)
 
         pick_serializer = DraftPickSerializer(pick)
         return Response(pick_serializer.data, status=status.HTTP_201_CREATED)
