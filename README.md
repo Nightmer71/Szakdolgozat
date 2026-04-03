@@ -94,9 +94,6 @@ Player data will be synced from the NBA public API:
 ## Documentation
 
 - See `docs/` folder for detailed design and planning documents
-- Month 1: Requirements analysis and data model
-- Month 2: Environment & architecture (this phase)
-- Month 3+: Implementation phases
 
 ## Contributing
 
