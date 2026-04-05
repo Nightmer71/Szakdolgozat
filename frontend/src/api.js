@@ -5,11 +5,73 @@ const API_BASE_URL =
 class APIClient {
         constructor(baseURL = API_BASE_URL) {
                 this.baseURL = baseURL;
+                this.isRefreshing = false;
+                this.refreshSubscribers = [];
+        }
+
+        onRefreshed(token) {
+                this.refreshSubscribers.forEach((callback) => callback(token));
+                this.refreshSubscribers = [];
+        }
+
+        addRefreshSubscriber(callback) {
+                this.refreshSubscribers.push(callback);
+        }
+
+        async refreshAccessToken() {
+                if (this.isRefreshing) {
+                        return new Promise((resolve) => {
+                                this.addRefreshSubscriber((token) => {
+                                        resolve(token);
+                                });
+                        });
+                }
+
+                this.isRefreshing = true;
+                const refreshToken = localStorage.getItem("refresh_token");
+
+                if (!refreshToken) {
+                        this.isRefreshing = false;
+                        throw new Error("No refresh token available");
+                }
+
+                try {
+                        const response = await fetch(
+                                `${this.baseURL}/auth/token/refresh/`,
+                                {
+                                        method: "POST",
+                                        headers: {
+                                                "Content-Type":
+                                                        "application/json",
+                                        },
+                                        body: JSON.stringify({
+                                                refresh: refreshToken,
+                                        }),
+                                },
+                        );
+
+                        if (!response.ok) {
+                                localStorage.removeItem("access_token");
+                                localStorage.removeItem("refresh_token");
+                                throw new Error("Token refresh failed");
+                        }
+
+                        const data = await response.json();
+                        localStorage.setItem("access_token", data.access);
+                        this.isRefreshing = false;
+                        this.onRefreshed(data.access);
+                        return data.access;
+                } catch (error) {
+                        this.isRefreshing = false;
+                        localStorage.removeItem("access_token");
+                        localStorage.removeItem("refresh_token");
+                        throw error;
+                }
         }
 
         async request(endpoint, options = {}) {
                 const url = `${this.baseURL}${endpoint}`;
-                const token = localStorage.getItem("access_token");
+                let token = localStorage.getItem("access_token");
 
                 const headers = {
                         "Content-Type": "application/json",
@@ -21,10 +83,32 @@ class APIClient {
                 }
 
                 try {
-                        const response = await fetch(url, {
+                        let response = await fetch(url, {
                                 ...options,
                                 headers,
                         });
+
+                        // If 401 Unauthorized, try refreshing token
+                        if (
+                                response.status === 401 &&
+                                localStorage.getItem("refresh_token")
+                        ) {
+                                try {
+                                        token = await this.refreshAccessToken();
+                                        headers["Authorization"] =
+                                                `Bearer ${token}`;
+                                        response = await fetch(url, {
+                                                ...options,
+                                                headers,
+                                        });
+                                } catch (refreshError) {
+                                        console.error(
+                                                "Token refresh failed:",
+                                                refreshError,
+                                        );
+                                        throw refreshError;
+                                }
+                        }
 
                         if (!response.ok) {
                                 throw new Error(

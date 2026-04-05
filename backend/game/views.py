@@ -37,6 +37,10 @@ class PlayerViewSet(viewsets.ReadOnlyModelViewSet):
 
     def get_queryset(self):
         queryset = Player.objects.all()
+
+        player_id = self.request.query_params.get('player_id', None)
+        if player_id:
+            queryset = queryset.filter(id=player_id)
         
         # Filter by name (search)
         search = self.request.query_params.get('search', None)
@@ -357,7 +361,7 @@ class DraftViewSet(viewsets.ViewSet):
             }
         )
 
-    @action(detail=False, methods=['get'], url_path='leagues/(?P<league_id>[^/.]+)/draft')
+    @action(detail=False, methods=['get'])
     def get_draft(self, request, league_id=None):
         """Get the draft for a specific league."""
         try:
@@ -367,7 +371,7 @@ class DraftViewSet(viewsets.ViewSet):
         except League.draft.RelatedObjectDoesNotExist:
             return Response({'detail': 'No draft found for this league'}, status=status.HTTP_404_NOT_FOUND)
 
-    @action(detail=False, methods=['post'], url_path='leagues/(?P<league_id>[^/.]+)/draft')
+    @action(detail=False, methods=['post'])
     def create_draft(self, request, league_id=None):
         """Create a new draft for a league (league owner only)."""
         league = get_object_or_404(League, id=league_id)
@@ -401,7 +405,7 @@ class DraftViewSet(viewsets.ViewSet):
         serializer = DraftSerializer(draft)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
-    @action(detail=False, methods=['post'], url_path='leagues/(?P<league_id>[^/.]+)/draft/start')
+    @action(detail=False, methods=['post'])
     def start_draft(self, request, league_id=None):
         """Start a draft (league owner only)."""
         league = get_object_or_404(League, id=league_id)
@@ -424,7 +428,7 @@ class DraftViewSet(viewsets.ViewSet):
         serializer = DraftSerializer(draft)
         return Response(serializer.data)
 
-    @action(detail=False, methods=['post'], url_path='leagues/(?P<league_id>[^/.]+)/draft/pick')
+    @action(detail=False, methods=['post'])
     def make_pick(self, request, league_id=None):
         """Make a draft pick."""
         league = get_object_or_404(League, id=league_id)
@@ -461,7 +465,7 @@ class DraftViewSet(viewsets.ViewSet):
         pick_serializer = DraftPickSerializer(pick)
         return Response(pick_serializer.data, status=status.HTTP_201_CREATED)
 
-    @action(detail=False, methods=['get'], url_path='leagues/(?P<league_id>[^/.]+)/draft/picks')
+    @action(detail=False, methods=['get'])
     def get_picks(self, request, league_id=None):
         """Get all picks for a league's draft."""
         try:
@@ -472,7 +476,7 @@ class DraftViewSet(viewsets.ViewSet):
         except League.draft.RelatedObjectDoesNotExist:
             return Response({'detail': 'No draft found for this league'}, status=status.HTTP_404_NOT_FOUND)
 
-    @action(detail=False, methods=['get'], url_path='leagues/(?P<league_id>[^/.]+)/draft/available-players')
+    @action(detail=False, methods=['get'])
     def get_available_players(self, request, league_id=None):
         """Get players available for drafting."""
         try:
