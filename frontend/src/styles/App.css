@@ -1,3 +1,10 @@
+/* Import component styles */
+@import "./Auth.css";
+@import "./Layout.css";
+@import "./Pages.css";
+@import "./League.css";
+@import "./Draft.css";
+
 /* Global Styles */
 * {
         margin: 0;
@@ -17,13 +24,6 @@ body {
 #root {
         min-height: 100vh;
 }
-
-/* Import component styles - commented out due to build issues */
-/* @import "./Auth.css";
-@import "./Layout.css";
-@import "./Pages.css";
-@import "./League.css";
-@import "./Draft.css"; */
 
 h1,
 h2,
@@ -94,10 +94,3 @@ a:hover {
 ::-webkit-scrollbar-thumb:hover {
         background: #555;
 }
-
-/* Import component styles */
-/* @import "./Auth.css";
-@import "./Layout.css";
-@import "./Pages.css";
-@import "./League.css";
-@import "./Draft.css"; */
