@@ -27,7 +27,7 @@ urlpatterns = [
     # Authentication endpoints
     path('api/auth/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('api/auth/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
-    path('api/auth/register/', RegisterView.register, name='register'),
+    path('api/auth/register/', RegisterView.as_view({'post': 'register'}), name='register'),
     
     # DRF auth
     path('api-auth/', include('rest_framework.urls')),

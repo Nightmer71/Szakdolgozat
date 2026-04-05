@@ -40,10 +40,10 @@ class APIClient {
         }
 
         // Auth endpoints
-        async register(email, password) {
+        async register(username, email, password) {
                 return this.request("/auth/register", {
                         method: "POST",
-                        body: JSON.stringify({ email, password }),
+                        body: JSON.stringify({ username, email, password }),
                 });
         }
 
