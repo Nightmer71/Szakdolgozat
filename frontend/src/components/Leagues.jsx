@@ -1,11 +1,11 @@
-import { useState, useContext } from "react";
+import { useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useData } from "../context/DataContext";
 import api from "../api";
 import "../styles/League.css";
 
 export function LeagueListPage() {
-        const { isAuthenticated } = useAuth();
+        const { isAuthenticated, user } = useAuth();
         const [leagues, setLeagues] = useState([]);
         const [showCreate, setShowCreate] = useState(false);
         const [newLeagueName, setNewLeagueName] = useState("");
@@ -35,6 +35,24 @@ export function LeagueListPage() {
                 } catch (err) {
                         console.error("Failed to create league", err);
                         alert("Failed to create league");
+                }
+        };
+
+        const handleDeleteLeague = async (leagueId) => {
+                if (
+                        !window.confirm(
+                                "Are you sure you want to delete this league? This will also delete all associated matches, drafts, and memberships. This action cannot be undone.",
+                        )
+                ) {
+                        return;
+                }
+
+                try {
+                        await api.deleteLeague(leagueId);
+                        setLeagues(leagues.filter((l) => l.id !== leagueId));
+                } catch (err) {
+                        console.error("Failed to delete league", err);
+                        alert(`Failed to delete league: ${err.message}`);
                 }
         };
 
@@ -115,14 +133,33 @@ export function LeagueListPage() {
                                                                         ?.length ||
                                                                         0}
                                                         </p>
-                                                        <button
-                                                                className="btn btn-small"
-                                                                onClick={() =>
-                                                                        (window.location.href = `/league/${league.id}`)
-                                                                }
-                                                        >
-                                                                View Details
-                                                        </button>
+                                                        <div className="league-actions">
+                                                                <button
+                                                                        className="btn btn-small"
+                                                                        onClick={() =>
+                                                                                (window.location.href = `/league/${league.id}`)
+                                                                        }
+                                                                >
+                                                                        View
+                                                                        Details
+                                                                </button>
+                                                                {user &&
+                                                                        league
+                                                                                .owner
+                                                                                .username ===
+                                                                                user.username && (
+                                                                                <button
+                                                                                        className="btn btn-small btn-danger"
+                                                                                        onClick={() =>
+                                                                                                handleDeleteLeague(
+                                                                                                        league.id,
+                                                                                                )
+                                                                                        }
+                                                                                >
+                                                                                        Delete
+                                                                                </button>
+                                                                        )}
+                                                        </div>
                                                 </div>
                                         ))}
                                 </div>

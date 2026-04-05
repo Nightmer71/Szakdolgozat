@@ -1,6 +1,34 @@
 import React, { createContext, useState, useContext, useEffect } from "react";
 import api from "../api";
 
+// Helper function to decode JWT token
+const decodeJWT = (token) => {
+        try {
+                const base64Url = token.split(".")[1];
+                const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
+                const jsonPayload = decodeURIComponent(
+                        atob(base64)
+                                .split("")
+                                .map(function (c) {
+                                        return (
+                                                "%" +
+                                                (
+                                                        "00" +
+                                                        c
+                                                                .charCodeAt(0)
+                                                                .toString(16)
+                                                ).slice(-2)
+                                        );
+                                })
+                                .join(""),
+                );
+                return JSON.parse(jsonPayload);
+        } catch (error) {
+                console.error("Error decoding JWT:", error);
+                return null;
+        }
+};
+
 // Create Auth Context
 const AuthContext = createContext(null);
 
@@ -15,10 +43,18 @@ export function AuthProvider({ children }) {
         useEffect(() => {
                 const token = localStorage.getItem("access_token");
                 if (token) {
-                        // Verify token is still valid (optional: could decode JWT)
                         setIsAuthenticated(true);
                         const username = localStorage.getItem("username");
-                        setUser({ username });
+                        let userId = localStorage.getItem("user_id");
+                        // If user_id not stored, try to decode from JWT
+                        if (!userId) {
+                                const decoded = decodeJWT(token);
+                                if (decoded && decoded.user_id) {
+                                        userId = decoded.user_id;
+                                        localStorage.setItem("user_id", userId);
+                                }
+                        }
+                        setUser({ username, id: userId });
                 }
                 setIsLoading(false);
         }, []);
@@ -58,7 +94,19 @@ export function AuthProvider({ children }) {
                         localStorage.setItem("access_token", response.access);
                         localStorage.setItem("refresh_token", response.refresh);
                         localStorage.setItem("username", username);
-                        setUser({ username });
+
+                        // Decode JWT to get user ID
+                        const decoded = decodeJWT(response.access);
+                        if (decoded && decoded.user_id) {
+                                localStorage.setItem(
+                                        "user_id",
+                                        decoded.user_id,
+                                );
+                                setUser({ username, id: decoded.user_id });
+                        } else {
+                                setUser({ username });
+                        }
+
                         setIsAuthenticated(true);
                         return response;
                 } catch (err) {

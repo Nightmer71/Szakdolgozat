@@ -72,7 +72,7 @@ export default function TeamBuilder({ team, onClose, onUpdated }) {
         const startDrag = (e, playerId) => {
                 try {
                         e.dataTransfer.setData("text/player-id", playerId);
-                } catch (err) {
+                } catch {
                         // ignore
                 }
         };

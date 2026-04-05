@@ -262,10 +262,7 @@ export function DraftPage({ leagueId }) {
                                 )}
 
                                 {draft.status === "completed" && (
-                                        <DraftCompleted
-                                                draft={draft}
-                                                picks={picks}
-                                        />
+                                        <DraftCompleted picks={picks} />
                                 )}
                         </div>
                 </div>
@@ -339,10 +336,23 @@ function DraftBoard({
         onSelectPlayer,
         onMakePick,
 }) {
+        console.log("DraftBoard render:", {
+                availablePlayers: availablePlayers.length,
+                selectedPlayer,
+        });
+
         const isMyTurn =
                 draft.current_team &&
-                draft.current_team.owner ===
+                draft.current_team.owner &&
+                parseInt(draft.current_team.owner) ===
                         parseInt(localStorage.getItem("user_id"));
+
+        console.log("isMyTurn check:", {
+                current_team: draft.current_team,
+                owner: draft.current_team?.owner,
+                user_id: localStorage.getItem("user_id"),
+                isMyTurn,
+        });
 
         return (
                 <div className="draft-board">
@@ -381,11 +391,20 @@ function DraftBoard({
                                                                                 player.id
                                                                         }
                                                                         className={`player-card ${selectedPlayer?.id === player.id ? "selected" : ""}`}
-                                                                        onClick={() =>
+                                                                        onClick={(
+                                                                                e,
+                                                                        ) => {
+                                                                                e.preventDefault();
+                                                                                e.stopPropagation();
+                                                                                console.log(
+                                                                                        "Player clicked:",
+                                                                                        player.name,
+                                                                                        player.id,
+                                                                                );
                                                                                 onSelectPlayer(
                                                                                         player,
-                                                                                )
-                                                                        }
+                                                                                );
+                                                                        }}
                                                                 >
                                                                         <h4>
                                                                                 {
@@ -428,9 +447,64 @@ function DraftBoard({
                                 </div>
 
                                 <div className="draft-sidebar">
+                                        <div className="draft-actions">
+                                                {isMyTurn && (
+                                                        <div className="pick-action">
+                                                                <h3>
+                                                                        Your
+                                                                        Turn to
+                                                                        Pick
+                                                                </h3>
+                                                                <div className="selected-player-summary">
+                                                                        {selectedPlayer ? (
+                                                                                <p>
+                                                                                        Selected:{" "}
+                                                                                        <strong>
+                                                                                                {
+                                                                                                        selectedPlayer.name
+                                                                                                }
+                                                                                        </strong>
+                                                                                </p>
+                                                                        ) : (
+                                                                                <p className="pick-instruction">
+                                                                                        No
+                                                                                        player
+                                                                                        selected.
+                                                                                        Click
+                                                                                        on
+                                                                                        a
+                                                                                        player
+                                                                                        from
+                                                                                        the
+                                                                                        list
+                                                                                        to
+                                                                                        select
+                                                                                        them.
+                                                                                </p>
+                                                                        )}
+                                                                        <button
+                                                                                onClick={
+                                                                                        onMakePick
+                                                                                }
+                                                                                disabled={
+                                                                                        !selectedPlayer
+                                                                                }
+                                                                                className="btn btn-primary btn-large"
+                                                                        >
+                                                                                Submit
+                                                                                Choice
+                                                                        </button>
+                                                                </div>
+                                                        </div>
+                                                )}
+                                        </div>
+
                                         {selectedPlayer && (
                                                 <div className="selected-player">
-                                                        <h3>Selected Player</h3>
+                                                        <h3>
+                                                                Selected Player
+                                                                Details
+                                                        </h3>
                                                         <div className="player-card selected">
                                                                 <h4>
                                                                         {
@@ -467,17 +541,6 @@ function DraftBoard({
                                                                         </span>
                                                                 </div>
                                                         </div>
-                                                        {isMyTurn && (
-                                                                <button
-                                                                        onClick={
-                                                                                onMakePick
-                                                                        }
-                                                                        className="btn btn-primary"
-                                                                >
-                                                                        Make
-                                                                        Pick
-                                                                </button>
-                                                        )}
                                                 </div>
                                         )}
 
@@ -524,7 +587,7 @@ function DraftBoard({
         );
 }
 
-function DraftCompleted({ draft, picks }) {
+function DraftCompleted({ picks }) {
         // Group picks by team
         const teamPicks = {};
         picks.forEach((pick) => {

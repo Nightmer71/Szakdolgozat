@@ -163,6 +163,12 @@
         margin-top: 15px;
 }
 
+.league-actions {
+        display: flex;
+        gap: 10px;
+        margin-top: 15px;
+}
+
 /* Create Form */
 .create-form {
         background: #f9f9f9;

@@ -207,6 +207,60 @@
         min-width: 300px;
 }
 
+.draft-actions {
+        background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%);
+        border: 2px solid #ffc107;
+        padding: 20px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+        box-shadow: 0 4px 12px rgba(255, 193, 7, 0.3);
+        animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+        0% {
+                box-shadow: 0 4px 12px rgba(255, 193, 7, 0.3);
+        }
+        50% {
+                box-shadow: 0 4px 16px rgba(255, 193, 7, 0.5);
+        }
+        100% {
+                box-shadow: 0 4px 12px rgba(255, 193, 7, 0.3);
+        }
+}
+
+.pick-action h3 {
+        color: #856404;
+        margin-bottom: 15px;
+        font-size: 18px;
+}
+
+.selected-player-summary {
+        background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
+        border: 1px solid #c3e6cb;
+        padding: 15px;
+        border-radius: 6px;
+        margin-bottom: 15px;
+}
+
+.selected-player-summary p {
+        margin: 0 0 10px 0;
+        color: #155724;
+        font-weight: 500;
+}
+
+.btn-large {
+        padding: 12px 24px;
+        font-size: 16px;
+        font-weight: 600;
+}
+
+.pick-instruction {
+        color: #6c757d;
+        font-style: italic;
+        margin: 0;
+}
+
 .selected-player {
         background: #f8f9fa;
         padding: 20px;

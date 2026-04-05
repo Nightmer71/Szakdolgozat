@@ -111,9 +111,18 @@ class APIClient {
                         }
 
                         if (!response.ok) {
-                                throw new Error(
-                                        `API Error: ${response.status} ${response.statusText}`,
-                                );
+                                let errorMessage = `API Error: ${response.status} ${response.statusText}`;
+                                try {
+                                        const errorData = await response.json();
+                                        if (errorData.error) {
+                                                errorMessage = errorData.error;
+                                        } else if (errorData.detail) {
+                                                errorMessage = errorData.detail;
+                                        }
+                                } catch {
+                                        // If we can't parse the error response, use the default message
+                                }
+                                throw new Error(errorMessage);
                         }
 
                         return await response.json();
@@ -190,6 +199,12 @@ class APIClient {
                 return this.request(`/teams/${teamId}/`);
         }
 
+        async deleteTeam(teamId) {
+                return this.request(`/teams/${teamId}/`, {
+                        method: "DELETE",
+                });
+        }
+
         // League endpoints
         async getLeagues() {
                 return this.request("/leagues/");
@@ -204,6 +219,12 @@ class APIClient {
 
         async getLeague(leagueId) {
                 return this.request(`/leagues/${leagueId}/`);
+        }
+
+        async deleteLeague(leagueId) {
+                return this.request(`/leagues/${leagueId}/`, {
+                        method: "DELETE",
+                });
         }
 
         async joinLeague(leagueId, teamId) {

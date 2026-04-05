@@ -8,14 +8,11 @@ import "../styles/League.css";
 
 export function HomePage() {
         const { teams, matches } = useData();
-        const [stats, setStats] = useState({ totalTeams: 0, totalMatches: 0 });
 
-        useEffect(() => {
-                setStats({
-                        totalTeams: teams.length,
-                        totalMatches: matches.length,
-                });
-        }, [teams, matches]);
+        const stats = {
+                totalTeams: teams.length,
+                totalMatches: matches.length,
+        };
 
         return (
                 <div className="page-container">
@@ -246,7 +243,8 @@ export function PlayersPage() {
 }
 
 export function TeamsPage() {
-        const { teams, addTeam, setSelectedTeam, updateTeam } = useData();
+        const { teams, addTeam, setSelectedTeam, updateTeam, removeTeam } =
+                useData();
         const [showCreateForm, setShowCreateForm] = useState(false);
         const [newTeamName, setNewTeamName] = useState("");
         const [isLoading, setIsLoading] = useState(false);
@@ -265,6 +263,24 @@ export function TeamsPage() {
                         console.error("Failed to create team:", error);
                 } finally {
                         setIsLoading(false);
+                }
+        };
+
+        const handleDeleteTeam = async (teamId) => {
+                if (
+                        !window.confirm(
+                                "Are you sure you want to delete this team? This action cannot be undone.",
+                        )
+                ) {
+                        return;
+                }
+
+                try {
+                        await api.deleteTeam(teamId);
+                        removeTeam(teamId);
+                } catch (error) {
+                        console.error("Failed to delete team:", error);
+                        alert(`Failed to delete team: ${error.message}`);
                 }
         };
 
@@ -368,6 +384,16 @@ export function TeamsPage() {
                                                                         }
                                                                 >
                                                                         Edit
+                                                                </button>
+                                                                <button
+                                                                        className="btn btn-small btn-danger"
+                                                                        onClick={() =>
+                                                                                handleDeleteTeam(
+                                                                                        team.id,
+                                                                                )
+                                                                        }
+                                                                >
+                                                                        Delete
                                                                 </button>
                                                         </div>
                                                 </div>
@@ -611,6 +637,7 @@ export function MatchesPage() {
                                                                                         Q
                                                                                         {idx +
                                                                                                 1}
+
                                                                                         :{" "}
                                                                                         {
                                                                                                 q.team_a
@@ -632,6 +659,7 @@ export function MatchesPage() {
                                                                                                 .team_a
                                                                                                 .name
                                                                                 }
+
                                                                                 :
                                                                         </strong>{" "}
                                                                         {replayMatch.summary.top_scorers.team_a
@@ -652,6 +680,7 @@ export function MatchesPage() {
                                                                                                 .team_b
                                                                                                 .name
                                                                                 }
+
                                                                                 :
                                                                         </strong>{" "}
                                                                         {replayMatch.summary.top_scorers.team_b
