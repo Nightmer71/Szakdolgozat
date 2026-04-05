@@ -17,7 +17,7 @@ import "./styles/App.css";
 
 function AppContent() {
         const { isAuthenticated, isLoading: authLoading } = useAuth();
-        const { setPlayersData, setIsLoading } = useData();
+        const { setPlayersData, setTeamsData, setIsLoading } = useData();
         const [currentPage, setCurrentPage] = useState("home");
         const [view, setView] = useState("login"); // 'login', 'register', 'app'
 
@@ -30,6 +30,7 @@ function AppContent() {
                 if (isAuthenticated) {
                         setView("app");
                         loadPlayers();
+                        loadTeams();
                 } else if (!authLoading) {
                         setView("login");
                 }
@@ -44,6 +45,15 @@ function AppContent() {
                         console.error("Failed to load players:", error);
                 } finally {
                         setIsLoading(false);
+                }
+        };
+
+        const loadTeams = async () => {
+                try {
+                        const response = await api.getTeams();
+                        setTeamsData(response.results || response);
+                } catch (error) {
+                        console.error("Failed to load teams:", error);
                 }
         };
 
@@ -99,10 +109,15 @@ function AppContent() {
 
         // Main app view
         if (leagueMatch) {
+                const handleTabChange = (tab) => {
+                        // Navigate back to main app when changing tabs from league view
+                        window.history.pushState(null, "", "/");
+                        setCurrentPage(tab);
+                };
                 return (
                         <MainLayout
                                 activeTab="leagues"
-                                onTabChange={setCurrentPage}
+                                onTabChange={handleTabChange}
                         >
                                 <LeagueDetailPage
                                         leagueId={parseInt(leagueMatch[1])}
@@ -112,10 +127,15 @@ function AppContent() {
         }
 
         if (draftMatch) {
+                const handleTabChange = (tab) => {
+                        // Navigate back to main app when changing tabs from draft view
+                        window.history.pushState(null, "", "/");
+                        setCurrentPage(tab);
+                };
                 return (
                         <MainLayout
                                 activeTab="leagues"
-                                onTabChange={setCurrentPage}
+                                onTabChange={handleTabChange}
                         >
                                 <DraftPage leagueId={parseInt(draftMatch[1])} />
                         </MainLayout>

@@ -35,6 +35,11 @@ export function DataProvider({ children }) {
                 setPlayers(playerList);
         };
 
+        // Team operations - add setTeamsData function
+        const setTeamsData = (teamList) => {
+                setTeams(teamList);
+        };
+
         // Match operations
         const addMatch = (match) => {
                 setMatches([...matches, match]);
@@ -59,6 +64,7 @@ export function DataProvider({ children }) {
                                 updateTeam,
                                 removeTeam,
                                 setPlayersData,
+                                setTeamsData,
                                 addMatch,
                                 updateMatch,
                                 setSelectedTeam,

@@ -73,15 +73,32 @@ export function DraftPage({ leagueId }) {
                         setDraft(draftData);
 
                         if (draftData.status === "active") {
-                                const [picksData, playersData] =
-                                        await Promise.all([
-                                                api.getDraftPicks(leagueId),
-                                                api.getAvailablePlayers(
+                                try {
+                                        const picksData =
+                                                await api.getDraftPicks(
                                                         leagueId,
-                                                ),
-                                        ]);
-                                setPicks(picksData);
-                                setAvailablePlayers(playersData);
+                                                );
+                                        setPicks(picksData);
+                                } catch (picksError) {
+                                        console.error(
+                                                "Failed to load picks:",
+                                                picksError,
+                                        );
+                                        setPicks([]);
+                                }
+                                try {
+                                        const playersData =
+                                                await api.getAvailablePlayers(
+                                                        leagueId,
+                                                );
+                                        setAvailablePlayers(playersData);
+                                } catch (playersError) {
+                                        console.error(
+                                                "Failed to load available players:",
+                                                playersError,
+                                        );
+                                        setAvailablePlayers([]);
+                                }
                         }
                 } catch (err) {
                         if (
@@ -116,12 +133,28 @@ export function DraftPage({ leagueId }) {
                         const startedDraft = await api.startDraft(leagueId);
                         setDraft(startedDraft);
                         // Load picks and available players
-                        const [picksData, playersData] = await Promise.all([
-                                api.getDraftPicks(leagueId),
-                                api.getAvailablePlayers(leagueId),
-                        ]);
-                        setPicks(picksData);
-                        setAvailablePlayers(playersData);
+                        try {
+                                const picksData =
+                                        await api.getDraftPicks(leagueId);
+                                setPicks(picksData);
+                        } catch (picksError) {
+                                console.error(
+                                        "Failed to load picks:",
+                                        picksError,
+                                );
+                                setPicks([]);
+                        }
+                        try {
+                                const playersData =
+                                        await api.getAvailablePlayers(leagueId);
+                                setAvailablePlayers(playersData);
+                        } catch (playersError) {
+                                console.error(
+                                        "Failed to load available players:",
+                                        playersError,
+                                );
+                                setAvailablePlayers([]);
+                        }
                         setError(null);
                 } catch (err) {
                         setError("Failed to start draft: " + err.message);
