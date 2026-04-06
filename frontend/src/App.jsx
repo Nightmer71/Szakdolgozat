@@ -21,7 +21,6 @@ function AppContent() {
         const [currentPage, setCurrentPage] = useState("home");
         const [view, setView] = useState("login"); // 'login', 'register', 'app'
 
-        // Check URL for specific pages
         const urlPath = window.location.pathname;
         const leagueMatch = urlPath.match(/^\/league\/(\d+)$/);
         const draftMatch = urlPath.match(/^\/draft\/(\d+)$/);
@@ -107,7 +106,6 @@ function AppContent() {
                 );
         }
 
-        // Main app view
         if (leagueMatch) {
                 const handleTabChange = (tab) => {
                         // Navigate back to main app when changing tabs from league view

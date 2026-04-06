@@ -4,14 +4,10 @@ from .models import RosterEntry
 
 
 def _extract_player_skill(player):
-    """Extract a numeric skill from player.metadata if available.
-    Falls back to a small baseline if no stats are present.
-
+    """
     The mapping combines available stat fields into a single `skill` value
     using a simple weighted formula:
       skill = base + w_ppg * norm(ppg) + w_eff * norm(eff) + w_usage * norm(usage)
-
-    This function is resilient against different API shapes and missing keys.
     """
     metadata = getattr(player, 'metadata', {}) or {}
     stats = metadata.get('stats') or metadata.get('full_data') or {}
@@ -72,15 +68,7 @@ def _extract_player_skill(player):
 def simulate_match(team_a, team_b, seed=None, minutes=48):
     """
     Simulate a basketball match between two teams with a minute-by-minute timeline.
-
-    Args:
-        team_a: Team object
-        team_b: Team object
-        seed: Optional seed for deterministic results (useful for testing)
-        minutes: Number of minutes to simulate (default 48)
-
-    Returns:
-        Dictionary with match result including final scores, per-player totals and a timeline of events.
+    Returns: Dictionary with match result including final scores, per-player totals and a timeline of events.
     """
     if seed is not None:
         random.seed(seed)

@@ -1,304 +1,266 @@
 // API client for communicating with Django backend
+import axios from "axios";
+
 const API_BASE_URL =
         import.meta.env.VITE_API_URL || "http://localhost:8000/api";
 
-class APIClient {
-        constructor(baseURL = API_BASE_URL) {
-                this.baseURL = baseURL;
-                this.isRefreshing = false;
-                this.refreshSubscribers = [];
-        }
+const apiClient = axios.create({
+        baseURL: API_BASE_URL,
+        headers: {
+                "Content-Type": "application/json",
+        },
+});
 
-        onRefreshed(token) {
-                this.refreshSubscribers.forEach((callback) => callback(token));
-                this.refreshSubscribers = [];
-        }
-
-        addRefreshSubscriber(callback) {
-                this.refreshSubscribers.push(callback);
-        }
-
-        async refreshAccessToken() {
-                if (this.isRefreshing) {
-                        return new Promise((resolve) => {
-                                this.addRefreshSubscriber((token) => {
-                                        resolve(token);
-                                });
-                        });
-                }
-
-                this.isRefreshing = true;
-                const refreshToken = localStorage.getItem("refresh_token");
-
-                if (!refreshToken) {
-                        this.isRefreshing = false;
-                        throw new Error("No refresh token available");
-                }
-
-                try {
-                        const response = await fetch(
-                                `${this.baseURL}/auth/token/refresh/`,
-                                {
-                                        method: "POST",
-                                        headers: {
-                                                "Content-Type":
-                                                        "application/json",
-                                        },
-                                        body: JSON.stringify({
-                                                refresh: refreshToken,
-                                        }),
-                                },
-                        );
-
-                        if (!response.ok) {
-                                localStorage.removeItem("access_token");
-                                localStorage.removeItem("refresh_token");
-                                throw new Error("Token refresh failed");
-                        }
-
-                        const data = await response.json();
-                        localStorage.setItem("access_token", data.access);
-                        this.isRefreshing = false;
-                        this.onRefreshed(data.access);
-                        return data.access;
-                } catch (error) {
-                        this.isRefreshing = false;
-                        localStorage.removeItem("access_token");
-                        localStorage.removeItem("refresh_token");
-                        throw error;
-                }
-        }
-
-        async request(endpoint, options = {}) {
-                const url = `${this.baseURL}${endpoint}`;
-                let token = localStorage.getItem("access_token");
-
-                const headers = {
-                        "Content-Type": "application/json",
-                        ...options.headers,
-                };
-
+// Request interceptor to add authorization header
+apiClient.interceptors.request.use(
+        (config) => {
+                const token = localStorage.getItem("access_token");
                 if (token) {
-                        headers["Authorization"] = `Bearer ${token}`;
+                        config.headers.Authorization = `Bearer ${token}`;
                 }
+                return config;
+        },
+        (error) => {
+                return Promise.reject(error);
+        },
+);
 
-                try {
-                        let response = await fetch(url, {
-                                ...options,
-                                headers,
-                        });
+// Response interceptor to handle token refresh
+apiClient.interceptors.response.use(
+        (response) => {
+                return response;
+        },
+        async (error) => {
+                const originalRequest = error.config;
 
-                        // If 401 Unauthorized, try refreshing token
-                        if (
-                                response.status === 401 &&
-                                localStorage.getItem("refresh_token")
-                        ) {
+                if (error.response?.status === 401 && !originalRequest._retry) {
+                        originalRequest._retry = true;
+
+                        const refreshToken =
+                                localStorage.getItem("refresh_token");
+                        if (refreshToken) {
                                 try {
-                                        token = await this.refreshAccessToken();
-                                        headers["Authorization"] =
-                                                `Bearer ${token}`;
-                                        response = await fetch(url, {
-                                                ...options,
-                                                headers,
-                                        });
-                                } catch (refreshError) {
-                                        console.error(
-                                                "Token refresh failed:",
-                                                refreshError,
+                                        const response = await axios.post(
+                                                `${API_BASE_URL}/auth/token/refresh/`,
+                                                {
+                                                        refresh: refreshToken,
+                                                },
                                         );
-                                        throw refreshError;
+
+                                        const newAccessToken =
+                                                response.data.access;
+                                        localStorage.setItem(
+                                                "access_token",
+                                                newAccessToken,
+                                        );
+
+                                        // Update the authorization header for the original request
+                                        originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
+
+                                        // Retry the original request
+                                        return apiClient(originalRequest);
+                                } catch (refreshError) {
+                                        // Refresh failed, clear tokens
+                                        localStorage.removeItem("access_token");
+                                        localStorage.removeItem(
+                                                "refresh_token",
+                                        );
+                                        return Promise.reject(refreshError);
                                 }
                         }
-
-                        if (!response.ok) {
-                                let errorMessage = `API Error: ${response.status} ${response.statusText}`;
-                                try {
-                                        const errorData = await response.json();
-                                        if (errorData.error) {
-                                                errorMessage = errorData.error;
-                                        } else if (errorData.detail) {
-                                                errorMessage = errorData.detail;
-                                        }
-                                } catch {
-                                        // If we can't parse the error response, use the default message
-                                }
-                                throw new Error(errorMessage);
-                        }
-
-                        return await response.json();
-                } catch (error) {
-                        console.error("API request failed:", error);
-                        throw error;
                 }
-        }
 
+                return Promise.reject(error);
+        },
+);
+
+class APIClient {
         // Auth endpoints
         async register(username, email, password) {
-                return this.request("/auth/register/", {
-                        method: "POST",
-                        body: JSON.stringify({ username, email, password }),
+                const response = await apiClient.post("/auth/register/", {
+                        username,
+                        email,
+                        password,
                 });
+                return response.data;
         }
 
         async login(email, password) {
-                return this.request("/auth/login", {
-                        method: "POST",
-                        body: JSON.stringify({ email, password }),
+                const response = await apiClient.post("/auth/login", {
+                        email,
+                        password,
                 });
+                return response.data;
         }
 
         // Player endpoints
         async getPlayers(page = 1, search = "") {
-                const params = new URLSearchParams();
-                if (page) params.append("page", page);
-                if (search) params.append("search", search);
-                return this.request(`/players/?${params}`);
+                const params = { page, search };
+                const response = await apiClient.get("/players/", { params });
+                return response.data;
         }
 
         async getPlayer(playerId) {
-                return this.request(`/players/${playerId}`);
+                const response = await apiClient.get(`/players/${playerId}`);
+                return response.data;
         }
 
         // Team endpoints
         async getTeams() {
-                return this.request("/teams/");
+                const response = await apiClient.get("/teams/");
+                return response.data;
         }
 
         async createTeam(name) {
-                return this.request("/teams/", {
-                        method: "POST",
-                        body: JSON.stringify({ name }),
-                });
+                const response = await apiClient.post("/teams/", { name });
+                return response.data;
         }
 
         async addPlayerToTeam(teamId, playerId) {
-                return this.request(`/teams/${teamId}/add_player/`, {
-                        method: "POST",
-                        body: JSON.stringify({ player_id: playerId }),
-                });
+                const response = await apiClient.post(
+                        `/teams/${teamId}/add_player/`,
+                        { player_id: playerId },
+                );
+                return response.data;
         }
 
         async removePlayerFromTeam(teamId, playerId) {
-                return this.request(`/teams/${teamId}/remove_player/`, {
-                        method: "POST",
-                        body: JSON.stringify({ player_id: playerId }),
-                });
+                const response = await apiClient.post(
+                        `/teams/${teamId}/remove_player/`,
+                        { player_id: playerId },
+                );
+                return response.data;
         }
 
         async setPlayerActive(teamId, playerId, isActive) {
-                return this.request(`/teams/${teamId}/set_player_active/`, {
-                        method: "POST",
-                        body: JSON.stringify({
-                                player_id: playerId,
-                                is_active: isActive,
-                        }),
-                });
+                const response = await apiClient.post(
+                        `/teams/${teamId}/set_player_active/`,
+                        { player_id: playerId, is_active: isActive },
+                );
+                return response.data;
         }
 
         async getTeam(teamId) {
-                return this.request(`/teams/${teamId}/`);
+                const response = await apiClient.get(`/teams/${teamId}/`);
+                return response.data;
         }
 
         async deleteTeam(teamId) {
-                return this.request(`/teams/${teamId}/`, {
-                        method: "DELETE",
-                });
+                const response = await apiClient.delete(`/teams/${teamId}/`);
+                return response.data;
         }
 
         // League endpoints
         async getLeagues() {
-                return this.request("/leagues/");
+                const response = await apiClient.get("/leagues/");
+                return response.data;
         }
 
         async createLeague(name) {
-                return this.request("/leagues/", {
-                        method: "POST",
-                        body: JSON.stringify({ name }),
-                });
+                const response = await apiClient.post("/leagues/", { name });
+                return response.data;
         }
 
         async getLeague(leagueId) {
-                return this.request(`/leagues/${leagueId}/`);
+                const response = await apiClient.get(`/leagues/${leagueId}/`);
+                return response.data;
         }
 
         async deleteLeague(leagueId) {
-                return this.request(`/leagues/${leagueId}/`, {
-                        method: "DELETE",
-                });
+                const response = await apiClient.delete(
+                        `/leagues/${leagueId}/`,
+                );
+                return response.data;
         }
 
         async joinLeague(leagueId, teamId) {
-                return this.request(`/leagues/${leagueId}/join/`, {
-                        method: "POST",
-                        body: JSON.stringify({ team_id: teamId }),
-                });
+                const response = await apiClient.post(
+                        `/leagues/${leagueId}/join/`,
+                        { team_id: teamId },
+                );
+                return response.data;
         }
 
         async leaveLeague(leagueId, teamId) {
-                return this.request(`/leagues/${leagueId}/leave/`, {
-                        method: "POST",
-                        body: JSON.stringify({ team_id: teamId }),
-                });
+                const response = await apiClient.post(
+                        `/leagues/${leagueId}/leave/`,
+                        { team_id: teamId },
+                );
+                return response.data;
         }
 
         async getLeagueSchedule(leagueId) {
-                return this.request(`/leagues/${leagueId}/schedule/`);
+                const response = await apiClient.get(
+                        `/leagues/${leagueId}/schedule/`,
+                );
+                return response.data;
         }
 
         async getLeagueStandings(leagueId) {
-                return this.request(`/leagues/${leagueId}/standings/`);
+                const response = await apiClient.get(
+                        `/leagues/${leagueId}/standings/`,
+                );
+                return response.data;
         }
 
         // Draft endpoints
         async getDraft(leagueId) {
-                return this.request(`/drafts/leagues/${leagueId}/draft/`);
+                const response = await apiClient.get(
+                        `/drafts/leagues/${leagueId}/draft/`,
+                );
+                return response.data;
         }
 
         async createDraft(leagueId, totalRounds = 10) {
-                return this.request(`/drafts/leagues/${leagueId}/draft/`, {
-                        method: "POST",
-                        body: JSON.stringify({ total_rounds: totalRounds }),
-                });
+                const response = await apiClient.post(
+                        `/drafts/leagues/${leagueId}/draft/`,
+                        { total_rounds: totalRounds },
+                );
+                return response.data;
         }
 
         async startDraft(leagueId) {
-                return this.request(
+                const response = await apiClient.post(
                         `/drafts/leagues/${leagueId}/draft/start/`,
-                        {
-                                method: "POST",
-                        },
                 );
+                return response.data;
         }
 
         async makeDraftPick(leagueId, playerId) {
-                return this.request(`/drafts/leagues/${leagueId}/draft/pick/`, {
-                        method: "POST",
-                        body: JSON.stringify({ player_id: playerId }),
-                });
+                const response = await apiClient.post(
+                        `/drafts/leagues/${leagueId}/draft/pick/`,
+                        { player_id: playerId },
+                );
+                return response.data;
         }
 
         async getDraftPicks(leagueId) {
-                return this.request(`/drafts/leagues/${leagueId}/draft/picks/`);
+                const response = await apiClient.get(
+                        `/drafts/leagues/${leagueId}/draft/picks/`,
+                );
+                return response.data;
         }
 
         async getAvailablePlayers(leagueId) {
-                return this.request(
+                const response = await apiClient.get(
                         `/drafts/leagues/${leagueId}/draft/available-players/`,
                 );
+                return response.data;
         }
 
         // Match endpoints
         async simulateMatch(teamAId, teamBId, seed = null, leagueId = null) {
-                const body = {
+                const data = {
                         team_a_id: teamAId,
                         team_b_id: teamBId,
                         seed,
                 };
-                if (leagueId) body.league_id = leagueId;
-                return this.request("/matches/simulate/", {
-                        method: "POST",
-                        body: JSON.stringify(body),
-                });
+                if (leagueId) data.league_id = leagueId;
+                const response = await apiClient.post(
+                        "/matches/simulate/",
+                        data,
+                );
+                return response.data;
         }
 }
 

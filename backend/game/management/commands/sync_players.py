@@ -55,8 +55,8 @@ class Command(BaseCommand):
                 team_id = team.get('id')
                 team_name = team.get('name', 'Unknown')
 
+                # Fetching players for a specific team
                 try:
-                    # Fetch players for this team
                     players_url = f'https://publicapi.dev/api/nba/teams/{team_id}/players'
                     players_response = requests.get(players_url, timeout=10)
                     players_response.raise_for_status()
