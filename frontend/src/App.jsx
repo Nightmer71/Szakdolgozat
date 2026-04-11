@@ -10,8 +10,7 @@ import {
         TeamsPage,
         MatchesPage,
 } from "./components/Pages";
-import { LeagueListPage, LeagueDetailPage } from "./components/Leagues";
-import { DraftPage } from "./components/DraftPage";
+import { LeagueListPage } from "./components/Leagues";
 import api from "./api";
 import "./styles/App.css";
 
@@ -20,10 +19,6 @@ function AppContent() {
         const { setPlayersData, setTeamsData, setIsLoading } = useData();
         const [currentPage, setCurrentPage] = useState("home");
         const [view, setView] = useState("login"); // 'login', 'register', 'app'
-
-        const urlPath = window.location.pathname;
-        const leagueMatch = urlPath.match(/^\/league\/(\d+)$/);
-        const draftMatch = urlPath.match(/^\/draft\/(\d+)$/);
 
         useEffect(() => {
                 if (isAuthenticated) {
@@ -103,40 +98,6 @@ function AppContent() {
                                         </button>
                                 </div>
                         </div>
-                );
-        }
-
-        if (leagueMatch) {
-                const handleTabChange = (tab) => {
-                        // Navigate back to main app when changing tabs from league view
-                        window.history.pushState(null, "", "/");
-                        setCurrentPage(tab);
-                };
-                return (
-                        <MainLayout
-                                activeTab="leagues"
-                                onTabChange={handleTabChange}
-                        >
-                                <LeagueDetailPage
-                                        leagueId={parseInt(leagueMatch[1])}
-                                />
-                        </MainLayout>
-                );
-        }
-
-        if (draftMatch) {
-                const handleTabChange = (tab) => {
-                        // Navigate back to main app when changing tabs from draft view
-                        window.history.pushState(null, "", "/");
-                        setCurrentPage(tab);
-                };
-                return (
-                        <MainLayout
-                                activeTab="leagues"
-                                onTabChange={handleTabChange}
-                        >
-                                <DraftPage leagueId={parseInt(draftMatch[1])} />
-                        </MainLayout>
                 );
         }
 

@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useData } from "../context/DataContext";
+import { DraftPage } from "./DraftPage";
 import api from "../api";
 import "../styles/League.css";
 
@@ -10,6 +11,8 @@ export function LeagueListPage() {
         const [showCreate, setShowCreate] = useState(false);
         const [newLeagueName, setNewLeagueName] = useState("");
         const [loading, setLoading] = useState(false);
+        const [selectedLeagueId, setSelectedLeagueId] = useState(null);
+        const [draftLeagueId, setDraftLeagueId] = useState(null);
 
         useEffect(() => {
                 const loadLeagues = async () => {
@@ -25,6 +28,20 @@ export function LeagueListPage() {
                 };
                 loadLeagues();
         }, []);
+
+        if (draftLeagueId) {
+                return <DraftPage leagueId={draftLeagueId} onBack={() => setDraftLeagueId(null)} />;
+        }
+
+        if (selectedLeagueId) {
+                return (
+                        <LeagueDetailPage
+                                leagueId={selectedLeagueId}
+                                onBack={() => setSelectedLeagueId(null)}
+                                onDraft={(id) => setDraftLeagueId(id)}
+                        />
+                );
+        }
 
         const handleCreateLeague = async (e) => {
                 e.preventDefault();
@@ -133,11 +150,10 @@ export function LeagueListPage() {
                                                                 <button
                                                                         className="btn btn-small"
                                                                         onClick={() =>
-                                                                                (window.location.href = `/league/${league.id}`)
+                                                                                setSelectedLeagueId(league.id)
                                                                         }
                                                                 >
-                                                                        View
-                                                                        Details
+                                                                        View Details
                                                                 </button>
                                                                 {user &&
                                                                         league
@@ -164,7 +180,8 @@ export function LeagueListPage() {
         );
 }
 
-export function LeagueDetailPage({ leagueId }) {
+export function LeagueDetailPage({ leagueId, onBack, onDraft }) {
+        const { user } = useAuth();
         const { teams } = useData();
         const [league, setLeague] = useState(null);
         const [standings, setStandings] = useState([]);
@@ -224,6 +241,11 @@ export function LeagueDetailPage({ leagueId }) {
 
         return (
                 <div className="page-container">
+                        {onBack && (
+                                <button className="btn btn-secondary" onClick={onBack} style={{ marginBottom: "1rem" }}>
+                                        ← Back to Leagues
+                                </button>
+                        )}
                         {loading ? (
                                 <p>Loading league...</p>
                         ) : !league ? (
@@ -327,9 +349,7 @@ export function LeagueDetailPage({ leagueId }) {
                                                 </p>
                                                 <button
                                                         className="btn btn-primary"
-                                                        onClick={() =>
-                                                                (window.location.href = `/draft/${leagueId}`)
-                                                        }
+                                                        onClick={() => onDraft?.(leagueId)}
                                                 >
                                                         🏆 Go to Draft
                                                 </button>

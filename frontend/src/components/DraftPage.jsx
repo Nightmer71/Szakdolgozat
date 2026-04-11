@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import api from "../api.js";
 import "../styles/Draft.css";
 
-export function DraftPage({ leagueId }) {
+export function DraftPage({ leagueId, onBack }) {
         const [draft, setDraft] = useState(null);
         const [picks, setPicks] = useState([]);
         const [availablePlayers, setAvailablePlayers] = useState([]);
@@ -13,13 +13,15 @@ export function DraftPage({ leagueId }) {
         useEffect(() => {
                 let ws;
                 const initWebSocket = () => {
-                        const protocol =
-                                window.location.protocol === "https:"
-                                        ? "wss"
-                                        : "ws";
-                        const host = window.location.host;
+                        const apiBase =
+                                import.meta.env.VITE_API_URL ||
+                                "http://localhost:8000/api";
+                        const wsBase = apiBase
+                                .replace(/^https/, "wss")
+                                .replace(/^http/, "ws")
+                                .replace(/\/api$/, "");
                         ws = new WebSocket(
-                                `${protocol}://${host}/ws/drafts/${leagueId}/`,
+                                `${wsBase}/ws/drafts/${leagueId}/`,
                         );
 
                         ws.onopen = () => {
@@ -202,7 +204,7 @@ export function DraftPage({ leagueId }) {
                                         <h1>League Draft</h1>
                                         <button
                                                 onClick={() =>
-                                                        (window.location.href = `/league/${leagueId}`)
+                                                        (onBack?.())
                                                 }
                                                 className="btn btn-secondary"
                                         >
@@ -228,7 +230,7 @@ export function DraftPage({ leagueId }) {
                                 <h1>Draft - {draft?.league?.name}</h1>
                                 <button
                                         onClick={() =>
-                                                (window.location.href = `/league/${leagueId}`)
+                                                (onBack?.())
                                         }
                                         className="btn btn-secondary"
                                 >
@@ -345,12 +347,12 @@ function DraftBoard({
                 draft.current_team &&
                 draft.current_team.owner &&
                 String(draft.current_team.owner?.id) ===
-                        String(localStorage.getItem("user_id"));
+                        String(sessionStorage.getItem("user_id"));
 
         console.log("isMyTurn check:", {
                 current_team: draft.current_team,
                 owner: draft.current_team?.owner,
-                user_id: localStorage.getItem("user_id"),
+                user_id: sessionStorage.getItem("user_id"),
                 isMyTurn,
         });
 
