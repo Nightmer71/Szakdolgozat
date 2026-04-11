@@ -83,17 +83,6 @@ class TeamViewSet(viewsets.ModelViewSet):
         serializer.save(owner=self.request.user)
 
     def destroy(self, request, *args, **kwargs):
-        """Prevent deletion of teams that are in leagues or have matches."""
-        team = self.get_object()
-        
-        # Check if team is in any leagues
-        if team.league_memberships.exists():
-            return Response({'error': 'Cannot delete team that is a member of leagues'}, status=status.HTTP_400_BAD_REQUEST)
-        
-        # Check if team has any matches
-        if team.home_matches.exists() or team.away_matches.exists():
-            return Response({'error': 'Cannot delete team that has matches'}, status=status.HTTP_400_BAD_REQUEST)
-        
         return super().destroy(request, *args, **kwargs)
 
     @action(detail=True, methods=['post'], permission_classes=[permissions.IsAuthenticated])
@@ -188,12 +177,7 @@ class LeagueViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
-        user = self.request.user
-        # leagues the user owns + leagues containing any of their teams
-        return League.objects.filter(
-            models.Q(owner=user) |
-            models.Q(memberships__team__owner=user)
-        ).distinct()
+        return League.objects.all()
 
     def perform_create(self, serializer):
         serializer.save(owner=self.request.user)
@@ -203,15 +187,6 @@ class LeagueViewSet(viewsets.ModelViewSet):
         league = self.get_object()
         if league.owner != request.user:
             return Response({'error': 'Only league owner can delete this league'}, status=status.HTTP_403_FORBIDDEN)
-        
-        # Check if league has an active draft
-        if hasattr(league, 'draft') and league.draft.status == 'active':
-            return Response({'error': 'Cannot delete league with active draft'}, status=status.HTTP_400_BAD_REQUEST)
-        
-        # Check if league has any memberships
-        if league.memberships.exists():
-            return Response({'error': 'Cannot delete league that has team memberships'}, status=status.HTTP_400_BAD_REQUEST)
-        
         return super().destroy(request, *args, **kwargs)
 
     @action(detail=True, methods=['post'], permission_classes=[permissions.IsAuthenticated])

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useData } from "../context/DataContext";
 import api from "../api";
@@ -11,18 +11,20 @@ export function LeagueListPage() {
         const [newLeagueName, setNewLeagueName] = useState("");
         const [loading, setLoading] = useState(false);
 
-        const handleLoadLeagues = async () => {
-                try {
-                        setLoading(true);
-                        const data = await api.getLeagues();
-                        setLeagues(data.results || []);
-                } catch (err) {
-                        console.error("Failed to load leagues", err);
-                        alert("Failed to load leagues");
-                } finally {
-                        setLoading(false);
-                }
-        };
+        useEffect(() => {
+                const loadLeagues = async () => {
+                        try {
+                                setLoading(true);
+                                const data = await api.getLeagues();
+                                setLeagues(data.results || data);
+                        } catch (err) {
+                                console.error("Failed to load leagues", err);
+                        } finally {
+                                setLoading(false);
+                        }
+                };
+                loadLeagues();
+        }, []);
 
         const handleCreateLeague = async (e) => {
                 e.preventDefault();
@@ -101,15 +103,9 @@ export function LeagueListPage() {
                                 </form>
                         )}
 
-                        <button
-                                className="btn btn-small"
-                                onClick={handleLoadLeagues}
-                                disabled={loading}
-                        >
-                                {loading ? "Loading..." : "Load Leagues"}
-                        </button>
-
-                        {leagues.length === 0 ? (
+                        {loading ? (
+                                <p>Loading leagues...</p>
+                        ) : leagues.length === 0 ? (
                                 <p>No leagues yet.</p>
                         ) : (
                                 <div className="leagues-grid">
@@ -189,6 +185,10 @@ export function LeagueDetailPage({ leagueId }) {
                 }
         };
 
+        useEffect(() => {
+                handleLoadLeague();
+        }, [leagueId]);
+
         const handleLoadSchedule = async () => {
                 try {
                         const data = await api.getLeagueSchedule(leagueId);
@@ -224,14 +224,10 @@ export function LeagueDetailPage({ leagueId }) {
 
         return (
                 <div className="page-container">
-                        {!league ? (
-                                <button
-                                        className="btn btn-primary"
-                                        onClick={handleLoadLeague}
-                                        disabled={loading}
-                                >
-                                        {loading ? "Loading..." : "Load League"}
-                                </button>
+                        {loading ? (
+                                <p>Loading league...</p>
+                        ) : !league ? (
+                                <p>League not found.</p>
                         ) : (
                                 <>
                                         <h2>{league.name}</h2>
