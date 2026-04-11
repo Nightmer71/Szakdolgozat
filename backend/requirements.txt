@@ -2,6 +2,7 @@ Django==6.0
 djangorestframework==3.16.1
 django-cors-headers==4.9.0
 psycopg2-binary==2.9.11
-requests==2.31.0
+requests==2.33.1
 djangorestframework-simplejwt==5.3.1
 channels==4.0.0
+nba_api==1.11.4

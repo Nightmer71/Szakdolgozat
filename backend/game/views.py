@@ -1,3 +1,4 @@
+import threading
 from rest_framework import viewsets, status, permissions
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -7,6 +8,7 @@ from django.db import models
 from django.shortcuts import get_object_or_404
 from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
+from .player_sync import sync_players_from_nba
 
 from .models import Player, Team, RosterEntry, Match, League, LeagueMembership, Draft, DraftPick
 from .serializers import (
@@ -306,6 +308,8 @@ class MatchViewSet(viewsets.ModelViewSet):
         team_a = get_object_or_404(Team, id=team_a_id, owner=request.user)
         team_b = get_object_or_404(Team, id=team_b_id, owner=request.user)
 
+        threading.Thread(target=sync_players_from_nba, daemon=True).start()
+
         # Simulate the match
         result = simulate_match(team_a, team_b, seed=seed)
 
@@ -429,6 +433,8 @@ class DraftViewSet(viewsets.ViewSet):
         draft.status = 'active'
         draft.save()
 
+        threading.Thread(target=sync_players_from_nba, daemon=True).start()
+
         self.broadcast_draft_update(draft)
 
         serializer = DraftSerializer(draft)
@@ -460,6 +466,13 @@ class DraftViewSet(viewsets.ViewSet):
             player=player,
             round_number=draft.current_round,
             pick_number=draft.current_pick
+        )
+
+        # Add the player to the team's roster
+        RosterEntry.objects.get_or_create(
+            team=current_team,
+            player=player,
+            defaults={'is_active': True}
         )
 
         # Advance the draft
