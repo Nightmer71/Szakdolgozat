@@ -344,8 +344,8 @@ function DraftBoard({
         const isMyTurn =
                 draft.current_team &&
                 draft.current_team.owner &&
-                parseInt(draft.current_team.owner) ===
-                        parseInt(localStorage.getItem("user_id"));
+                String(draft.current_team.owner?.id) ===
+                        String(localStorage.getItem("user_id"));
 
         console.log("isMyTurn check:", {
                 current_team: draft.current_team,

@@ -91,10 +91,6 @@ export function Login({ onLoginSuccess }) {
                                         </button>
                                 </form>
 
-                                <p className="auth-footer">
-                                        Don't have an account?{" "}
-                                        <a href="#register">Register here</a>
-                                </p>
                         </div>
                 </div>
         );

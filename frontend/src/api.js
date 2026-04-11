@@ -14,7 +14,7 @@ const apiClient = axios.create({
 // Request interceptor to add authorization header
 apiClient.interceptors.request.use(
         (config) => {
-                const token = localStorage.getItem("access_token");
+                const token = sessionStorage.getItem("access_token");
                 if (token) {
                         config.headers.Authorization = `Bearer ${token}`;
                 }
@@ -37,7 +37,7 @@ apiClient.interceptors.response.use(
                         originalRequest._retry = true;
 
                         const refreshToken =
-                                localStorage.getItem("refresh_token");
+                                sessionStorage.getItem("refresh_token");
                         if (refreshToken) {
                                 try {
                                         const response = await axios.post(
@@ -49,7 +49,7 @@ apiClient.interceptors.response.use(
 
                                         const newAccessToken =
                                                 response.data.access;
-                                        localStorage.setItem(
+                                        sessionStorage.setItem(
                                                 "access_token",
                                                 newAccessToken,
                                         );
@@ -61,8 +61,8 @@ apiClient.interceptors.response.use(
                                         return apiClient(originalRequest);
                                 } catch (refreshError) {
                                         // Refresh failed, clear tokens
-                                        localStorage.removeItem("access_token");
-                                        localStorage.removeItem(
+                                        sessionStorage.removeItem("access_token");
+                                        sessionStorage.removeItem(
                                                 "refresh_token",
                                         );
                                         return Promise.reject(refreshError);
@@ -85,11 +85,23 @@ class APIClient {
                 return response.data;
         }
 
-        async login(email, password) {
-                const response = await apiClient.post("/auth/login", {
-                        email,
+        async login(username, password) {
+                const response = await apiClient.post("/auth/token/", {
+                        username,
                         password,
                 });
+                return response.data;
+        }
+
+        async request(url, options = {}) {
+                const { method = "GET", body, ...rest } = options;
+                const config = {
+                        method,
+                        url,
+                        ...rest,
+                };
+                if (body) config.data = body;
+                const response = await apiClient.request(config);
                 return response.data;
         }
 

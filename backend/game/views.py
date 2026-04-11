@@ -533,19 +533,24 @@ class RegisterView(viewsets.ViewSet):
         email = request.data.get('email')
         password = request.data.get('password')
 
+        print(f"Register attempt: username={username}, email={email}, password={'*' * len(password) if password else None}")
+
         if not all([username, email, password]):
+            print("Missing required fields")
             return Response(
                 {'error': 'username, email, and password are required'},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
         if User.objects.filter(username=username).exists():
+            print(f"Username {username} already exists")
             return Response(
                 {'error': 'Username already exists'},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
         if User.objects.filter(email=email).exists():
+            print(f"Email {email} already exists")
             return Response(
                 {'error': 'Email already exists'},
                 status=status.HTTP_400_BAD_REQUEST

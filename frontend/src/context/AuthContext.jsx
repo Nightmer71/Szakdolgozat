@@ -41,17 +41,17 @@ export function AuthProvider({ children }) {
 
         // Check if user is already logged in on mount
         useEffect(() => {
-                const token = localStorage.getItem("access_token");
+                const token = sessionStorage.getItem("access_token");
                 if (token) {
                         setIsAuthenticated(true);
-                        const username = localStorage.getItem("username");
-                        let userId = localStorage.getItem("user_id");
+                        const username = sessionStorage.getItem("username");
+                        let userId = sessionStorage.getItem("user_id");
                         // If user_id not stored, try to decode from JWT
                         if (!userId) {
                                 const decoded = decodeJWT(token);
                                 if (decoded && decoded.user_id) {
                                         userId = decoded.user_id;
-                                        localStorage.setItem("user_id", userId);
+                                        sessionStorage.setItem("user_id", userId);
                                 }
                         }
                         setUser({ username, id: userId });
@@ -64,14 +64,11 @@ export function AuthProvider({ children }) {
                 setIsLoading(true);
                 setError(null);
                 try {
-                        const response = await api.request("/auth/register/", {
-                                method: "POST",
-                                body: JSON.stringify({
-                                        username,
-                                        email,
-                                        password,
-                                }),
-                        });
+                        const response = await api.register(
+                                username,
+                                email,
+                                password,
+                        );
                         setUser(response);
                         return response;
                 } catch (err) {
@@ -87,18 +84,15 @@ export function AuthProvider({ children }) {
                 setIsLoading(true);
                 setError(null);
                 try {
-                        const response = await api.request("/auth/token/", {
-                                method: "POST",
-                                body: JSON.stringify({ username, password }),
-                        });
-                        localStorage.setItem("access_token", response.access);
-                        localStorage.setItem("refresh_token", response.refresh);
-                        localStorage.setItem("username", username);
+                        const response = await api.login(username, password);
+                        sessionStorage.setItem("access_token", response.access);
+                        sessionStorage.setItem("refresh_token", response.refresh);
+                        sessionStorage.setItem("username", username);
 
                         // Decode JWT to get user ID
                         const decoded = decodeJWT(response.access);
                         if (decoded && decoded.user_id) {
-                                localStorage.setItem(
+                                sessionStorage.setItem(
                                         "user_id",
                                         decoded.user_id,
                                 );
@@ -119,9 +113,9 @@ export function AuthProvider({ children }) {
 
         // Logout user
         const logout = () => {
-                localStorage.removeItem("access_token");
-                localStorage.removeItem("refresh_token");
-                localStorage.removeItem("username");
+                sessionStorage.removeItem("access_token");
+                sessionStorage.removeItem("refresh_token");
+                sessionStorage.removeItem("username");
                 setUser(null);
                 setIsAuthenticated(false);
                 setError(null);
@@ -131,7 +125,7 @@ export function AuthProvider({ children }) {
         const refreshToken = async () => {
                 try {
                         const refreshToken =
-                                localStorage.getItem("refresh_token");
+                                sessionStorage.getItem("refresh_token");
                         if (!refreshToken) {
                                 throw new Error("No refresh token available");
                         }
@@ -144,7 +138,7 @@ export function AuthProvider({ children }) {
                                         }),
                                 },
                         );
-                        localStorage.setItem("access_token", response.access);
+                        sessionStorage.setItem("access_token", response.access);
                         return response;
                 } catch (err) {
                         logout();

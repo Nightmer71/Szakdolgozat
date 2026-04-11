@@ -141,10 +141,6 @@ export function Register({ onRegisterSuccess }) {
                                         </button>
                                 </form>
 
-                                <p className="auth-footer">
-                                        Already have an account?{" "}
-                                        <a href="#login">Login here</a>
-                                </p>
                         </div>
                 </div>
         );

@@ -475,18 +475,24 @@ export function LeagueDetailPage({ leagueId }) {
                                                                                                                 .name
                                                                                                 }
                                                                                         </span>
-                                                                                        <button
-                                                                                                className="btn btn-small btn-danger"
-                                                                                                onClick={() =>
-                                                                                                        handleLeaveTeam(
-                                                                                                                m
-                                                                                                                        .team
-                                                                                                                        .id,
-                                                                                                        )
-                                                                                                }
-                                                                                        >
-                                                                                                Leave
-                                                                                        </button>
+                                                                                        {user?.id ===
+                                                                                                m
+                                                                                                        .team
+                                                                                                        .owner
+                                                                                                        ?.id && (
+                                                                                                <button
+                                                                                                        className="btn btn-small btn-danger"
+                                                                                                        onClick={() =>
+                                                                                                                handleLeaveTeam(
+                                                                                                                        m
+                                                                                                                                .team
+                                                                                                                                .id,
+                                                                                                                )
+                                                                                                        }
+                                                                                                >
+                                                                                                        Leave
+                                                                                                </button>
+                                                                                        )}
                                                                                 </div>
                                                                         ),
                                                                 )}
