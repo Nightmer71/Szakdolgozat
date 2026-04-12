@@ -1,29 +1,15 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import api from "../api";
 import "../styles/Pages.css";
 
 export default function TeamBuilder({ team, onClose, onUpdated }) {
-        const [availablePlayers, setAvailablePlayers] = useState([]);
         const [teamData, setTeamData] = useState(team || { roster: [] });
         const [isLoading, setIsLoading] = useState(false);
         const [actionLoading, setActionLoading] = useState(false);
-        const [draggingOver, setDraggingOver] = useState(false);
 
         useEffect(() => {
-                loadAvailablePlayers();
                 refreshTeam();
-                // eslint-disable-next-line react-hooks/exhaustive-deps
         }, [team]);
-
-        const loadAvailablePlayers = async () => {
-                try {
-                        const resp = await api.getPlayers(1, "");
-                        const players = resp.results || resp;
-                        setAvailablePlayers(players);
-                } catch (err) {
-                        console.error("Failed to load players", err);
-                }
-        };
 
         const refreshTeam = async () => {
                 if (!team) return;
@@ -36,57 +22,6 @@ export default function TeamBuilder({ team, onClose, onUpdated }) {
                         console.error("Failed to refresh team", err);
                 } finally {
                         setIsLoading(false);
-                }
-        };
-
-        const allowDrop = (e) => {
-                e.preventDefault();
-        };
-
-        const handleDragEnter = (e) => {
-                e.preventDefault();
-                setDraggingOver(true);
-        };
-
-        const handleDragLeave = (e) => {
-                e.preventDefault();
-                setDraggingOver(false);
-        };
-
-        const handleDrop = async (e) => {
-                e.preventDefault();
-                setDraggingOver(false);
-                const playerId = e.dataTransfer.getData("text/player-id");
-                if (!playerId || !team) return;
-                try {
-                        setActionLoading(true);
-                        await api.addPlayerToTeam(team.id, playerId);
-                        await refreshTeam();
-                } catch (err) {
-                        console.error("Failed to add player", err);
-                } finally {
-                        setActionLoading(false);
-                }
-        };
-
-        const startDrag = (e, playerId) => {
-                try {
-                        e.dataTransfer.setData("text/player-id", playerId);
-                } catch {
-                        // ignore
-                }
-        };
-
-        const handleAddClick = async (playerId) => {
-                if (!team) return alert("Select a team first to add players");
-                try {
-                        setActionLoading(true);
-                        await api.addPlayerToTeam(team.id, playerId);
-                        await refreshTeam();
-                } catch (err) {
-                        console.error("Failed to add player", err);
-                } finally {
-                        setActionLoading(false);
                 }
         };
 
@@ -116,6 +51,43 @@ export default function TeamBuilder({ team, onClose, onUpdated }) {
                 }
         };
 
+        const benchPlayers =
+                teamData?.roster?.filter((r) => !r.is_active) ?? [];
+        const activePlayers =
+                teamData?.roster?.filter((r) => r.is_active) ?? [];
+
+        const renderRosterEntry = (r, showActivate) => (
+                <div key={r.id} className="player-card small">
+                        <div style={{ flex: 1 }}>
+                                <strong>{r.player.name}</strong>
+                                <p>{r.player.position}</p>
+                        </div>
+                        <div style={{ display: "flex", gap: 8 }}>
+                                <button
+                                        className="btn btn-small btn-primary"
+                                        onClick={() =>
+                                                handleToggleActive(
+                                                        r.player.id,
+                                                        r.is_active,
+                                                )
+                                        }
+                                        disabled={actionLoading}
+                                >
+                                        {showActivate ? "Activate" : "Bench"}
+                                </button>
+                                <button
+                                        className="btn btn-danger btn-small"
+                                        onClick={() =>
+                                                handleRemove(r.player.id)
+                                        }
+                                        disabled={actionLoading}
+                                >
+                                        Remove
+                                </button>
+                        </div>
+                </div>
+        );
+
         return (
                 <div className="team-builder" aria-live="polite">
                         <div className="team-builder-header">
@@ -132,167 +104,61 @@ export default function TeamBuilder({ team, onClose, onUpdated }) {
                                 <div
                                         className="available-players"
                                         role="listbox"
-                                        aria-label="available players"
+                                        aria-label="bench players"
                                 >
-                                        <h4>Available Players</h4>
-                                        <div className="players-list">
-                                                {availablePlayers.map((p) => (
-                                                        <div
-                                                                key={p.id}
-                                                                className="player-card small"
-                                                                draggable
-                                                                onDragStart={(
-                                                                        e,
-                                                                ) =>
-                                                                        startDrag(
-                                                                                e,
-                                                                                p.id,
-                                                                        )
-                                                                }
-                                                                onClick={() =>
-                                                                        handleAddClick(
-                                                                                p.id,
-                                                                        )
-                                                                }
-                                                        >
-                                                                <div
-                                                                        style={{
-                                                                                flex: 1,
-                                                                        }}
-                                                                >
-                                                                        <strong>
-                                                                                {
-                                                                                        p.name
-                                                                                }
-                                                                        </strong>
-                                                                        <p>
-                                                                                {
-                                                                                        p.position
-                                                                                }
-                                                                        </p>
-                                                                </div>
-                                                                <button
-                                                                        className="btn btn-small"
-                                                                        disabled={
-                                                                                actionLoading
-                                                                        }
-                                                                        aria-busy={
-                                                                                actionLoading
-                                                                        }
-                                                                        onClick={() =>
-                                                                                handleAddClick(
-                                                                                        p.id,
-                                                                                )
-                                                                        }
-                                                                >
-                                                                        {actionLoading
-                                                                                ? "..."
-                                                                                : "Add"}
-                                                                </button>
-                                                        </div>
-                                                ))}
-                                        </div>
+                                        <h4>Drafted Players (Bench)</h4>
+                                        {isLoading ? (
+                                                <p>Loading...</p>
+                                        ) : (
+                                                <div className="players-list">
+                                                        {benchPlayers.length ===
+                                                        0 ? (
+                                                                <p>
+                                                                        No bench
+                                                                        players
+                                                                </p>
+                                                        ) : (
+                                                                benchPlayers.map(
+                                                                        (r) =>
+                                                                                renderRosterEntry(
+                                                                                        r,
+                                                                                        true,
+                                                                                ),
+                                                                )
+                                                        )}
+                                                </div>
+                                        )}
                                 </div>
 
                                 <div
-                                        className={`team-roster drop-zone ${draggingOver ? "drop-active" : ""}`}
+                                        className="team-roster"
                                         role="listbox"
-                                        aria-label={`Roster for ${team?.name}`}
-                                        onDrop={handleDrop}
-                                        onDragOver={allowDrop}
-                                        onDragEnter={handleDragEnter}
-                                        onDragLeave={handleDragLeave}
+                                        aria-label={`Starting lineup for ${team?.name}`}
                                 >
-                                        <h4>Team Roster</h4>
+                                        <h4>Starting Lineup</h4>
                                         {isLoading ? (
-                                                <p>Loading roster...</p>
+                                                <p>Loading...</p>
                                         ) : (
                                                 <div className="players-list">
-                                                        {teamData?.roster
-                                                                ?.length ===
+                                                        {activePlayers.length ===
                                                         0 ? (
                                                                 <p>
                                                                         No
+                                                                        active
                                                                         players
-                                                                        in
-                                                                        roster
+                                                                        —
+                                                                        activate
+                                                                        players
+                                                                        from the
+                                                                        bench
                                                                 </p>
                                                         ) : (
-                                                                teamData.roster.map(
-                                                                        (r) => (
-                                                                                <div
-                                                                                        key={
-                                                                                                r.id
-                                                                                        }
-                                                                                        className="player-card small"
-                                                                                >
-                                                                                        <div
-                                                                                                style={{
-                                                                                                        flex: 1,
-                                                                                                }}
-                                                                                        >
-                                                                                                <strong>
-                                                                                                        {
-                                                                                                                r
-                                                                                                                        .player
-                                                                                                                        .name
-                                                                                                        }
-                                                                                                </strong>
-                                                                                                <p>
-                                                                                                        {
-                                                                                                                r
-                                                                                                                        .player
-                                                                                                                        .position
-                                                                                                        }
-                                                                                                </p>
-                                                                                        </div>
-                                                                                        <div
-                                                                                                style={{
-                                                                                                        display: "flex",
-                                                                                                        gap: 8,
-                                                                                                }}
-                                                                                        >
-                                                                                                <button
-                                                                                                        className={`btn btn-small ${r.is_active ? "btn-primary" : ""}`}
-                                                                                                        onClick={() =>
-                                                                                                                handleToggleActive(
-                                                                                                                        r
-                                                                                                                                .player
-                                                                                                                                .id,
-                                                                                                                        r.is_active,
-                                                                                                                )
-                                                                                                        }
-                                                                                                        aria-pressed={
-                                                                                                                r.is_active
-                                                                                                        }
-                                                                                                        disabled={
-                                                                                                                actionLoading
-                                                                                                        }
-                                                                                                >
-                                                                                                        {r.is_active
-                                                                                                                ? "Active"
-                                                                                                                : "Bench"}
-                                                                                                </button>
-                                                                                                <button
-                                                                                                        className="btn btn-danger btn-small"
-                                                                                                        onClick={() =>
-                                                                                                                handleRemove(
-                                                                                                                        r
-                                                                                                                                .player
-                                                                                                                                .id,
-                                                                                                                )
-                                                                                                        }
-                                                                                                        disabled={
-                                                                                                                actionLoading
-                                                                                                        }
-                                                                                                >
-                                                                                                        {actionLoading
-                                                                                                                ? "..."
-                                                                                                                : "Remove"}
-                                                                                                </button>
-                                                                                        </div>
-                                                                                </div>
-                                                                        ),
+                                                                activePlayers.map(
+                                                                        (r) =>
+                                                                                renderRosterEntry(
+                                                                                        r,
+                                                                                        false,
+                                                                                ),
                                                                 )
                                                         )}
                                                 </div>

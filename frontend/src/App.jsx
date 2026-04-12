@@ -18,7 +18,7 @@ function AppContent() {
         const { isAuthenticated, isLoading: authLoading } = useAuth();
         const { setPlayersData, setTeamsData, setIsLoading } = useData();
         const [currentPage, setCurrentPage] = useState("home");
-        const [view, setView] = useState("login"); // 'login', 'register', 'app'
+        const [view, setView] = useState("login");
 
         useEffect(() => {
                 if (isAuthenticated) {

@@ -11,7 +11,6 @@ const apiClient = axios.create({
         },
 });
 
-// Request interceptor to add authorization header
 apiClient.interceptors.request.use(
         (config) => {
                 const token = sessionStorage.getItem("access_token");
@@ -25,7 +24,6 @@ apiClient.interceptors.request.use(
         },
 );
 
-// Response interceptor to handle token refresh
 apiClient.interceptors.response.use(
         (response) => {
                 return response;
@@ -54,14 +52,13 @@ apiClient.interceptors.response.use(
                                                 newAccessToken,
                                         );
 
-                                        // Update the authorization header for the original request
                                         originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
 
-                                        // Retry the original request
                                         return apiClient(originalRequest);
                                 } catch (refreshError) {
-                                        // Refresh failed, clear tokens
-                                        sessionStorage.removeItem("access_token");
+                                        sessionStorage.removeItem(
+                                                "access_token",
+                                        );
                                         sessionStorage.removeItem(
                                                 "refresh_token",
                                         );
@@ -75,7 +72,6 @@ apiClient.interceptors.response.use(
 );
 
 class APIClient {
-        // Auth endpoints
         async register(username, email, password) {
                 const response = await apiClient.post("/auth/register/", {
                         username,
@@ -105,7 +101,6 @@ class APIClient {
                 return response.data;
         }
 
-        // Player endpoints
         async getPlayers(page = 1, search = "") {
                 const params = { page, search };
                 const response = await apiClient.get("/players/", { params });
@@ -117,7 +112,6 @@ class APIClient {
                 return response.data;
         }
 
-        // Team endpoints
         async getTeams() {
                 const response = await apiClient.get("/teams/");
                 return response.data;
@@ -162,7 +156,6 @@ class APIClient {
                 return response.data;
         }
 
-        // League endpoints
         async getLeagues() {
                 const response = await apiClient.get("/leagues/");
                 return response.data;
@@ -215,7 +208,6 @@ class APIClient {
                 return response.data;
         }
 
-        // Draft endpoints
         async getDraft(leagueId) {
                 const response = await apiClient.get(
                         `/drafts/leagues/${leagueId}/draft/`,
@@ -260,7 +252,6 @@ class APIClient {
                 return response.data;
         }
 
-        // Match endpoints
         async simulateMatch(teamAId, teamBId, seed = null, leagueId = null) {
                 const data = {
                         team_a_id: teamAId,

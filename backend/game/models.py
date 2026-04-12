@@ -64,7 +64,6 @@ class League(models.Model):
         related_name='leagues',
     )
     created_at = models.DateTimeField(auto_now_add=True)
-    # optional slug or privacy fields could be added later
 
     def __str__(self):
         return f"League {self.name} (owner={self.owner})"
@@ -129,15 +128,12 @@ class Draft(models.Model):
         round_order = self.pick_order[round_index]
 
         if self.current_pick >= len(round_order):
-            # End of round, go to next round
             self.current_round += 1
             self.current_pick = 1
 
             if self.current_round > self.total_rounds:
-                # Draft complete
                 self.status = 'completed'
         else:
-            # Next pick in same round
             self.current_pick += 1
 
         self.save()
@@ -153,7 +149,7 @@ class DraftPick(models.Model):
     pick_time = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        unique_together = (('draft', 'player'),)  # Player can only be drafted once
+        unique_together = (('draft', 'player'),)  
         ordering = ['pick_number']
 
     def __str__(self):

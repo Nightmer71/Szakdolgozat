@@ -20,9 +20,7 @@ export function DraftPage({ leagueId, onBack }) {
                                 .replace(/^https/, "wss")
                                 .replace(/^http/, "ws")
                                 .replace(/\/api$/, "");
-                        ws = new WebSocket(
-                                `${wsBase}/ws/drafts/${leagueId}/`,
-                        );
+                        ws = new WebSocket(`${wsBase}/ws/drafts/${leagueId}/`);
 
                         ws.onopen = () => {
                                 console.log("Draft WebSocket connected");
@@ -134,7 +132,6 @@ export function DraftPage({ leagueId, onBack }) {
                 try {
                         const startedDraft = await api.startDraft(leagueId);
                         setDraft(startedDraft);
-                        // Load picks and available players
                         try {
                                 const picksData =
                                         await api.getDraftPicks(leagueId);
@@ -173,12 +170,10 @@ export function DraftPage({ leagueId, onBack }) {
                         );
                         setPicks((prev) => [...prev, pick]);
 
-                        // Update available players
                         setAvailablePlayers((prev) =>
                                 prev.filter((p) => p.id !== selectedPlayer.id),
                         );
 
-                        // Update draft state
                         const updatedDraft = await api.getDraft(leagueId);
                         setDraft(updatedDraft);
 
@@ -203,9 +198,7 @@ export function DraftPage({ leagueId, onBack }) {
                                 <div className="draft-header">
                                         <h1>League Draft</h1>
                                         <button
-                                                onClick={() =>
-                                                        (onBack?.())
-                                                }
+                                                onClick={() => onBack?.()}
                                                 className="btn btn-secondary"
                                         >
                                                 ← Back to League
@@ -229,9 +222,7 @@ export function DraftPage({ leagueId, onBack }) {
                         <div className="draft-header">
                                 <h1>Draft - {draft?.league?.name}</h1>
                                 <button
-                                        onClick={() =>
-                                                (onBack?.())
-                                        }
+                                        onClick={() => onBack?.()}
                                         className="btn btn-secondary"
                                 >
                                         ← Back to League
@@ -304,7 +295,6 @@ function DraftLobby({ draft, onStart }) {
                                                         Round {index + 1}:
                                                 </strong>
                                                 {round.map((teamId) => {
-                                                        // In a real app, you'd have team names, but for now just show IDs
                                                         return (
                                                                 <span
                                                                         key={
@@ -590,7 +580,6 @@ function DraftBoard({
 }
 
 function DraftCompleted({ picks }) {
-        // Group picks by team
         const teamPicks = {};
         picks.forEach((pick) => {
                 if (!teamPicks[pick.team.id]) {

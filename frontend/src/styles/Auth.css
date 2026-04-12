@@ -1,4 +1,3 @@
-/* Authentication Pages */
 .auth-wrapper {
         display: flex;
         flex-direction: column;
@@ -118,7 +117,6 @@
         opacity: 0.8;
 }
 
-/* Common Buttons */
 .btn {
         padding: 10px 20px;
         border: none;

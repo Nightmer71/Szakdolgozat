@@ -21,21 +21,17 @@ router.register(r'drafts', DraftViewSet, basename='draft')
 urlpatterns = [
     path('admin/', admin.site.urls),
     
-    # API endpoints
     path('api/', include(router.urls)),
     
-    # Draft custom endpoints (must come before generic router)
     path('api/drafts/leagues/<int:league_id>/draft/', DraftViewSet.as_view({'get': 'get_draft', 'post': 'create_draft'}), name='draft_detail'),
     path('api/drafts/leagues/<int:league_id>/draft/start/', DraftViewSet.as_view({'post': 'start_draft'}), name='draft_start'),
     path('api/drafts/leagues/<int:league_id>/draft/pick/', DraftViewSet.as_view({'post': 'make_pick'}), name='draft_pick'),
     path('api/drafts/leagues/<int:league_id>/draft/picks/', DraftViewSet.as_view({'get': 'get_picks'}), name='draft_picks'),
     path('api/drafts/leagues/<int:league_id>/draft/available-players/', DraftViewSet.as_view({'get': 'get_available_players'}), name='available_players'),
     
-    # Authentication endpoints
     path('api/auth/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('api/auth/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     path('api/auth/register/', RegisterView.as_view({'post': 'register'}), name='register'),
     
-    # DRF auth
     path('api-auth/', include('rest_framework.urls')),
 ]

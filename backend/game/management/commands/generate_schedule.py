@@ -33,7 +33,6 @@ class Command(BaseCommand):
 
         created = 0
         for a, b in round_robin_pairs(teams):
-            # check existing match irrespective of order
             if not Match.objects.filter(league=league, team_a=a, team_b=b).exists() and not Match.objects.filter(league=league, team_a=b, team_b=a).exists():
                 Match.objects.create(league=league, team_a=a, team_b=b)
                 created += 1

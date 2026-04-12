@@ -24,7 +24,6 @@ def sync_players_from_nba():
     """
     logger.info("NBA sync: starting for season %s", CURRENT_SEASON)
 
-    # ── 1. Roster info (name, position, team) ────────────────────────────
     try:
         roster_df = playerindex.PlayerIndex(
             season=CURRENT_SEASON,
@@ -34,9 +33,8 @@ def sync_players_from_nba():
         logger.error("NBA sync: failed to fetch PlayerIndex: %s", e)
         return
 
-    time.sleep(1)  # respect NBA stats API rate limit
+    time.sleep(1)  
 
-    # ── 2. Per-game stats ─────────────────────────────────────────────────
     try:
         stats_df = leaguedashplayerstats.LeagueDashPlayerStats(
             season=CURRENT_SEASON,
@@ -47,7 +45,6 @@ def sync_players_from_nba():
         logger.error("NBA sync: failed to fetch LeagueDashPlayerStats: %s", e)
         stats_df = pd.DataFrame()
 
-    # ── 3. Build stats lookup {nba_player_id: stats_dict} ────────────────
     stats_lookup = {}
     for _, row in stats_df.iterrows():
         try:
@@ -68,7 +65,6 @@ def sync_players_from_nba():
         except (ValueError, TypeError, KeyError):
             continue
 
-    # ── 4. Upsert players ─────────────────────────────────────────────────
     created = updated = 0
     for _, row in roster_df.iterrows():
         try:

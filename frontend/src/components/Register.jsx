@@ -24,7 +24,6 @@ export function Register({ onRegisterSuccess }) {
 
                 try {
                         await register(username, email, password);
-                        // Auto-login after registration
                         await login(username, password);
                         onRegisterSuccess?.();
                 } catch (err) {
@@ -140,7 +139,6 @@ export function Register({ onRegisterSuccess }) {
                                                         : "Register"}
                                         </button>
                                 </form>
-
                         </div>
                 </div>
         );

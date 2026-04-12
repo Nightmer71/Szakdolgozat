@@ -44,18 +44,15 @@ class PlayerViewSet(viewsets.ReadOnlyModelViewSet):
         player_id = self.request.query_params.get('player_id', None)
         if player_id:
             queryset = queryset.filter(id=player_id)
-        
-        # Filter by name (search)
+
         search = self.request.query_params.get('search', None)
         if search:
             queryset = queryset.filter(name__icontains=search)
-        
-        # Filter by position
+
         position = self.request.query_params.get('position', None)
         if position:
             queryset = queryset.filter(position__iexact=position)
-        
-        # Filter by team
+
         team = self.request.query_params.get('team', None)
         if team:
             queryset = queryset.filter(team__iexact=team)
@@ -252,7 +249,6 @@ class LeagueViewSet(viewsets.ModelViewSet):
     def generate_schedule(self, request, pk=None):
         """Generate a simple round-robin schedule for this league via API."""
         league = self.get_object()
-        # only league owner or member may generate schedule
         user = request.user
         if league.owner != user and not league.memberships.filter(team__owner=user).exists():
             return Response({'error': 'Not a member of league'}, status=status.HTTP_403_FORBIDDEN)
@@ -304,16 +300,13 @@ class MatchViewSet(viewsets.ModelViewSet):
         team_b_id = serializer.validated_data['team_b_id']
         seed = serializer.validated_data.get('seed')
 
-        # Verify both teams exist and belong to the user
         team_a = get_object_or_404(Team, id=team_a_id, owner=request.user)
         team_b = get_object_or_404(Team, id=team_b_id, owner=request.user)
 
         threading.Thread(target=sync_players_from_nba, daemon=True).start()
 
-        # Simulate the match
         result = simulate_match(team_a, team_b, seed=seed)
 
-        # Create match record (optionally associate with league)
         match_kwargs = {
             'team_a': team_a,
             'team_b': team_b,
@@ -322,7 +315,6 @@ class MatchViewSet(viewsets.ModelViewSet):
         }
         league_id = serializer.validated_data.get('league_id')
         if league_id:
-            # ensure the league exists and user belongs to it
             league = get_object_or_404(League, id=league_id)
             if not league.memberships.filter(team__owner=request.user).exists() and league.owner != request.user:
                 return Response({'error': 'Not a member of league'}, status=status.HTTP_403_FORBIDDEN)
@@ -342,7 +334,6 @@ class DraftViewSet(viewsets.ViewSet):
     def get_draft_for_league(self, league_id):
         """Get draft for a league, ensuring user has access."""
         league = get_object_or_404(League, id=league_id)
-        # Check if user owns league or has teams in it
         if (league.owner != self.request.user and
             not league.memberships.filter(team__owner=self.request.user).exists()):
             raise permissions.PermissionDenied("Not a member of this league")
@@ -391,7 +382,6 @@ class DraftViewSet(viewsets.ViewSet):
         serializer = DraftCreateSerializer(data=request.data, context={'league': league})
         serializer.is_valid(raise_exception=True)
 
-        # Create pick order (snake draft)
         memberships = list(league.memberships.all())
         teams = [m.team for m in memberships]
         total_rounds = serializer.validated_data['total_rounds']
@@ -399,10 +389,8 @@ class DraftViewSet(viewsets.ViewSet):
         pick_order = []
         for round_num in range(total_rounds):
             if round_num % 2 == 0:
-                # Even rounds: normal order
                 round_order = [team.id for team in teams]
             else:
-                # Odd rounds: reverse order (snake)
                 round_order = [team.id for team in reversed(teams)]
             pick_order.append(round_order)
 
@@ -459,7 +447,6 @@ class DraftViewSet(viewsets.ViewSet):
         current_team = draft.get_current_team()
         player = get_object_or_404(Player, id=player_id)
 
-        # Create the pick
         pick = DraftPick.objects.create(
             draft=draft,
             team=current_team,
@@ -468,17 +455,14 @@ class DraftViewSet(viewsets.ViewSet):
             pick_number=draft.current_pick
         )
 
-        # Add the player to the team's roster
         RosterEntry.objects.get_or_create(
             team=current_team,
             player=player,
             defaults={'is_active': True}
         )
 
-        # Advance the draft
         draft.advance_pick()
 
-        # broadcast draft updates to websocket subscribers
         self.broadcast_draft_update(draft)
 
         pick_serializer = DraftPickSerializer(pick)
@@ -500,9 +484,7 @@ class DraftViewSet(viewsets.ViewSet):
         """Get players available for drafting."""
         try:
             draft = self.get_draft_for_league(league_id)
-            # Get all drafted player IDs
             drafted_player_ids = set(draft.picks.values_list('player_id', flat=True))
-            # Get all players not drafted
             available_players = Player.objects.exclude(id__in=drafted_player_ids)
             serializer = PlayerSerializer(available_players, many=True)
             return Response(serializer.data)
@@ -556,5 +538,4 @@ class RegisterView(viewsets.ViewSet):
         )
 
 
-# Import models for Q filter
 from django.db import models

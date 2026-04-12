@@ -70,7 +70,6 @@ class LeagueSerializer(serializers.ModelSerializer):
 
     def get_standings(self, obj):
         """Compute simple standings based on finished match results."""
-        # Prepare initial stats per team
         stats = {}
         for membership in obj.memberships.select_related('team'):
             t = membership.team
@@ -82,19 +81,16 @@ class LeagueSerializer(serializers.ModelSerializer):
                 'points_for': 0,
                 'points_against': 0,
             }
-        # iterate over matches with results
         for match in obj.matches.filter(result__isnull=False):
             res = match.result or {}
             a_score = res.get('team_a_score', 0)
             b_score = res.get('team_b_score', 0)
-            # update points
             if match.team_a.id in stats:
                 stats[match.team_a.id]['points_for'] += a_score
                 stats[match.team_a.id]['points_against'] += b_score
             if match.team_b.id in stats:
                 stats[match.team_b.id]['points_for'] += b_score
                 stats[match.team_b.id]['points_against'] += a_score
-            # update win/loss
             if a_score > b_score:
                 if match.team_a.id in stats:
                     stats[match.team_a.id]['wins'] += 1
@@ -105,7 +101,6 @@ class LeagueSerializer(serializers.ModelSerializer):
                     stats[match.team_b.id]['wins'] += 1
                 if match.team_a.id in stats:
                     stats[match.team_a.id]['losses'] += 1
-        # return sorted list by wins descending
         return sorted(stats.values(), key=lambda x: x['wins'], reverse=True)
 
 
@@ -118,7 +113,6 @@ class MatchSerializer(serializers.ModelSerializer):
     team_b_id = serializers.IntegerField(write_only=True)
     created_by = UserSerializer(read_only=True)
 
-    # computed summary of the simulation result for quick analysis
     summary = serializers.SerializerMethodField()
 
     class Meta:
@@ -146,7 +140,6 @@ class MatchSerializer(serializers.ModelSerializer):
         """
         result = obj.result or {}
         timeline = result.get('timeline', [])
-        # accumulate points per player for each team
         team_a_scores = {}
         team_b_scores = {}
         for ev in timeline:
@@ -155,14 +148,12 @@ class MatchSerializer(serializers.ModelSerializer):
             else:
                 team_b_scores[ev['player_id']] = team_b_scores.get(ev['player_id'], 0) + ev.get('points', 0)
         def top_list(score_dict):
-            # convert to list of {player_id, points} sorted descending
             return sorted(
                 [{'player_id': pid, 'points': pts} for pid, pts in score_dict.items()],
                 key=lambda x: x['points'],
                 reverse=True,
             )
         quarters = []
-        # ensure we know number of minutes (default 48)
         max_min = max((ev.get('minute', 0) for ev in timeline), default=0)
         mins_per_q = 12
         num_q = (max_min + mins_per_q - 1) // mins_per_q if max_min else 4
@@ -255,21 +246,17 @@ class DraftPickCreateSerializer(serializers.Serializer):
         draft = self.context['draft']
         user = self.context['user']
 
-        # Check if draft is active
         if draft.status != 'active':
             raise serializers.ValidationError("Draft is not active.")
 
-        # Check if it's the user's turn
         current_team = draft.get_current_team()
         if not current_team or current_team.owner != user:
             raise serializers.ValidationError("It's not your turn to pick.")
 
-        # Check if player is available
         player_id = data['player_id']
         if DraftPick.objects.filter(draft=draft, player_id=player_id).exists():
             raise serializers.ValidationError("Player has already been drafted.")
 
-        # Check if team already has this player
         if current_team.roster.filter(player_id=player_id).exists():
             raise serializers.ValidationError("Your team already has this player.")
 

@@ -101,7 +101,7 @@ if DATABASE_URL:
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.postgresql',
-            'NAME': parsed.path[1:],  # skip leading '/'
+            'NAME': parsed.path[1:],  
             'USER': parsed.username,
             'PASSWORD': parsed.password,
             'HOST': parsed.hostname,
@@ -109,7 +109,6 @@ if DATABASE_URL:
         }
     }
 else:
-    # fallback to local defaults
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.postgresql',

@@ -1,6 +1,5 @@
 import React, { createContext, useState, useContext } from "react";
 
-// Create Data Context for teams, players, matches
 const DataContext = createContext(null);
 
 export function DataProvider({ children }) {
@@ -11,7 +10,6 @@ export function DataProvider({ children }) {
         const [isLoading, setIsLoading] = useState(false);
         const [error, setError] = useState(null);
 
-        // Team operations
         const addTeam = (team) => {
                 setTeams([...teams, team]);
         };
@@ -30,17 +28,14 @@ export function DataProvider({ children }) {
                 }
         };
 
-        // Player operations
         const setPlayersData = (playerList) => {
                 setPlayers(playerList);
         };
 
-        // Team operations - add setTeamsData function
         const setTeamsData = (teamList) => {
                 setTeams(teamList);
         };
 
-        // Match operations
         const addMatch = (match) => {
                 setMatches([...matches, match]);
         };

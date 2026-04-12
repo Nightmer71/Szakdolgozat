@@ -1,11 +1,9 @@
-/* Import component styles */
 @import "./Auth.css";
 @import "./Layout.css";
 @import "./Pages.css";
 @import "./League.css";
 @import "./Draft.css";
 
-/* Global Styles */
 * {
         margin: 0;
         padding: 0;
@@ -40,7 +38,6 @@ p {
         padding: 0;
 }
 
-/* Typography */
 h1 {
         font-size: 2.5em;
         font-weight: 700;
@@ -76,7 +73,6 @@ a:hover {
         color: #5568d3;
 }
 
-/* Scrollbar */
 ::-webkit-scrollbar {
         width: 8px;
         height: 8px;

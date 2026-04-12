@@ -50,7 +50,6 @@ class DraftConsumer(AsyncJsonWebsocketConsumer):
         return list(Player.objects.exclude(id__in=drafted_ids))
 
     async def receive_json(self, content):
-        # No direct write actions via websocket for now
         await self.send_json({'type': 'heartbeat', 'status': 'ok'})
 
     async def draft_update(self, event):
