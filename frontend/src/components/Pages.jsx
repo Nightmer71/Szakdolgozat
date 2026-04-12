@@ -447,6 +447,15 @@ export function MatchesPage() {
                 setScoreB(0);
         };
 
+        const replayTimeline = replayMatch?.result?.timeline ?? [];
+        const replayDone = replayMatch !== null && replayIndex >= replayTimeline.length;
+        const winnerId = replayMatch?.result?.winner_id ?? null;
+        const winnerName = replayMatch && winnerId != null
+                ? (winnerId === replayMatch.team_a?.id ? replayMatch.team_a.name
+                        : winnerId === replayMatch.team_b?.id ? replayMatch.team_b.name
+                        : null)
+                : null;
+
         const handleSimulate = async () => {
                 if (!teamA || !teamB)
                         return alert("Select both teams to simulate");
@@ -607,19 +616,37 @@ export function MatchesPage() {
 
                         {replayMatch ? (
                                 <div className="match-replay">
-                                        <h3>
-                                                {replayMatch.team_a.name} vs{" "}
-                                                {replayMatch.team_b.name}
-                                        </h3>
+                                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                                                <h3>
+                                                        {replayMatch.team_a.name} vs{" "}
+                                                        {replayMatch.team_b.name}
+                                                </h3>
+                                                <button
+                                                        className="btn btn-secondary"
+                                                        onClick={() => setReplayMatch(null)}
+                                                >
+                                                        Close
+                                                </button>
+                                        </div>
                                         <div className="match-result">
                                                 <span className="score">
                                                         {scoreA}
                                                 </span>
-                                                <span className="vs">VS</span>
+                                                <span className="vs">
+                                                        {replayDone ? "FINAL" : "VS"}
+                                                </span>
                                                 <span className="score">
                                                         {scoreB}
                                                 </span>
                                         </div>
+                                        {replayDone && (
+                                                <div className="match-final-banner">
+                                                        {winnerName
+                                                                ? <strong>🏆 {winnerName} wins!</strong>
+                                                                : <strong>It's a tie!</strong>
+                                                        }
+                                                </div>
+                                        )}
                                         {replayMatch.summary && (
                                                 <div className="match-summary">
                                                         <h4>Quarter Scores</h4>
@@ -774,7 +801,10 @@ export function MatchesPage() {
                                                                         match.created_at,
                                                                 ).toLocaleDateString()}
                                                         </p>
-                                                        <button className="btn btn-small">
+                                                        <button
+                                                                className="btn btn-small"
+                                                                onClick={() => startReplay(match)}
+                                                        >
                                                                 View Details
                                                         </button>
                                                 </div>

@@ -301,7 +301,7 @@ class MatchViewSet(viewsets.ModelViewSet):
         seed = serializer.validated_data.get('seed')
 
         team_a = get_object_or_404(Team, id=team_a_id, owner=request.user)
-        team_b = get_object_or_404(Team, id=team_b_id, owner=request.user)
+        team_b = get_object_or_404(Team, id=team_b_id)
 
         threading.Thread(target=sync_players_from_nba, daemon=True).start()
 
