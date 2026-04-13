@@ -6,7 +6,7 @@ import { LeagueListPage, LeagueDetailPage } from "./Leagues";
 import "../styles/Pages.css";
 import "../styles/League.css";
 
-export function HomePage() {
+export function HomePage({ onTabChange }) {
         const { teams, matches } = useData();
 
         const stats = {
@@ -66,11 +66,11 @@ export function HomePage() {
                                         statistics, and climb the leaderboard.
                                 </p>
                                 <div className="welcome-actions">
-                                        <button className="btn btn-primary">
+                                        <button
+                                                className="btn btn-primary"
+                                                onClick={() => onTabChange("teams")}
+                                        >
                                                 Create New Team
-                                        </button>
-                                        <button className="btn btn-secondary">
-                                                Browse Players
                                         </button>
                                 </div>
                         </div>

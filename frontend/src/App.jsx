@@ -106,7 +106,7 @@ function AppContent() {
                         activeTab={currentPage}
                         onTabChange={setCurrentPage}
                 >
-                        {currentPage === "home" && <HomePage />}
+                        {currentPage === "home" && <HomePage onTabChange={setCurrentPage} />}
                         {currentPage === "players" && <PlayersPage />}
                         {currentPage === "teams" && <TeamsPage />}
                         {currentPage === "matches" && <MatchesPage />}
